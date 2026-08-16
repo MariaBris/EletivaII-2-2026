@@ -55,4 +55,15 @@ class ExerciciosController extends Controller
         }
         
     }
+
+     public function abrirFormExer5(){
+        return view('exer5');
+    }
+    public function respostaExer5(Request $request){
+         $valor1 = $_POST['valor1'];
+        $valor2 = $_POST['valor2'];
+        $valor3 = $_POST['valor3'];
+        $med = ($valor1 + $valor2 + $valor3) / 3;
+        return view('exer5', ['med' => number_format($med, 2, ',', '.')]);
+    }
 }
