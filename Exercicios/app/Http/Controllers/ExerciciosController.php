@@ -187,8 +187,25 @@ class ExerciciosController extends Controller
         $capital = $request->capital;
         $juros = $request->juros;
         $periodo = $request->periodo;
-        number_format($rendimento = $capital * ($juros / 100) * $periodo);
-        number_format($valor = $rendimento + $capital);
+        $rendimento = $capital * ($juros / 100) * $periodo;
+        $valor = $rendimento + $capital;
+         $valor = number_format($valor, 2, ',', '.');
+        $rendimento = number_format($rendimento, 2, ',', '.');
         return view('exer17', compact('rendimento', 'valor'));
+    }
+
+    public function abrirFormExer18(){
+        return view('exer18');
+    }
+
+    public function respostaExer18(Request $request){
+        $capital = $request->capital;
+        $juros = $request->juros;
+        $periodo = $request->periodo;
+        $montante = $capital *  ((1 + ($juros / 100)) ** $periodo);
+        $rendimento =  $montante - $capital;
+        $rendimento = number_format($rendimento, 2, ',', '.');
+        $montante =number_format($montante, 2, ',', '.');
+        return view('exer18', compact('rendimento', 'montante'));
     }
 }
