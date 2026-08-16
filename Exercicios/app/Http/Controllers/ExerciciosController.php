@@ -167,4 +167,15 @@ class ExerciciosController extends Controller
         $imc = $peso / ($altura * $altura);
         return view('exer15', ['imc' => number_format($imc, 2, ',', '.')]);
     }
+
+    public function abrirFormExer16(){
+        return view('exer16');
+    }
+
+    public function respostaExer16(Request $request){
+        $valor = $request->valor;
+        $desconto = $request->desconto;
+        $valor = $valor - ($valor * ($desconto / 100));
+        return view('exer16', ['valor' => number_format($valor, 2, ',', '.')]);
+    }
 }
