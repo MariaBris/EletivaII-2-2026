@@ -208,4 +208,17 @@ class ExerciciosController extends Controller
         $montante =number_format($montante, 2, ',', '.');
         return view('exer18', compact('rendimento', 'montante'));
     }
+
+    public function abrirFormExer19(){
+        return view('exer19');
+    }
+
+    public function respostaExer19(Request $request){
+        $dia = $request->dia;
+        $hora = $dia * 24;
+        $minuto = $hora * 60;
+        $segundo = $minuto * 60;
+        return view('exer19', compact('hora', 'minuto', 'segundo'));
+    }
+
 }
