@@ -75,4 +75,13 @@ class ExerciciosController extends Controller
         $temp = ($celsius * (9/5)) + 32;
         return view('exer6', ['temp' => $temp]);
     }
+
+    public function abrirFormExer7(){
+        return view('exer7');
+    }
+    public function respostaExer7(Request $request){
+        $tempF = $_POST['tempF'];
+        $temp = (5 / 9) * ($tempF - 32);
+        return view('exer7', ['temp' => $temp]);
+    }
 }
