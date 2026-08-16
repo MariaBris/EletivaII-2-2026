@@ -178,4 +178,17 @@ class ExerciciosController extends Controller
         $valor = $valor - ($valor * ($desconto / 100));
         return view('exer16', ['valor' => number_format($valor, 2, ',', '.')]);
     }
+
+    public function abrirFormExer17(){
+        return view('exer17');
+    }
+
+    public function respostaExer17(Request $request){
+        $capital = $request->capital;
+        $juros = $request->juros;
+        $periodo = $request->periodo;
+        number_format($rendimento = $capital * ($juros / 100) * $periodo);
+        number_format($valor = $rendimento + $capital);
+        return view('exer17', compact('rendimento', 'valor'));
+    }
 }
