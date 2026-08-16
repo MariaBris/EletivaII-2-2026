@@ -1,4 +1,3 @@
-
 @extends('layout')
 @section('titulo', 'Exercício 9')
 @section('conteudo')

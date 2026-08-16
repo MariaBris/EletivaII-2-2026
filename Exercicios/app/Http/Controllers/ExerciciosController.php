@@ -103,5 +103,16 @@ class ExerciciosController extends Controller
         $raio = $request->raio;
         $area = 3.14 * ($raio ** 2);
         return view('exer9', ['area' => $area]);
-    }    
+    }  
+    
+    public function abrirFormExer10(){
+        return view('exer10');
+        }
+        
+        public function respostaExer10(Request $request){
+            $largura = $request->largura;
+            $altura = $request->altura;
+            $perimetro = 2 * ($largura + $altura);
+        return view('exer10', ['peri' => $perimetro]);
+    }
 }
