@@ -156,4 +156,15 @@ class ExerciciosController extends Controller
         $milha = $km / 1.609;
         return view('exer14', ['milha' => number_format($milha, 2, ',', '.')]);
     }
+
+    public function abrirFormExer15(){
+        return view('exer15');
+    }
+
+    public function respostaExer15(Request $request){
+        $peso = $request->peso;
+        $altura = $request->altura;
+        $imc = $peso / ($altura * $altura);
+        return view('exer15', ['imc' => number_format($imc, 2, ',', '.')]);
+    }
 }
