@@ -221,4 +221,15 @@ class ExerciciosController extends Controller
         return view('exer19', compact('hora', 'minuto', 'segundo'));
     }
 
+    public function abrirFormExer20(){
+        return view('exer20');
+    }
+
+    public function respostaExer20(Request $request){
+        $distancia = $request->distancia;
+        $tempo = $request->tempo;
+        $resultado = $distancia / $tempo;
+        return view('exer20', ['resultado' => round($resultado)]);
+    }
+
 }
