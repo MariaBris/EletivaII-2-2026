@@ -146,4 +146,14 @@ class ExerciciosController extends Controller
         $cm = $metro * 100;
         return view('exer13', ['cm' => $cm]);
     }
+
+    public function abrirFormExer14(){
+        return view('exer14');
+    }
+
+    public function respostaExer14(Request $request){
+        $km = $request->km;
+        $milha = $km / 1.609;
+        return view('exer14', ['milha' => number_format($milha, 2, ',', '.')]);
+    }
 }
