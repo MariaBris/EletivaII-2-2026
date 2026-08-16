@@ -136,4 +136,14 @@ class ExerciciosController extends Controller
         $resultado = $base ** $expoente;
         return view('exer12', compact('resultado', 'base', 'expoente'));
     }
+
+    public function abrirFormExer13(){
+        return view('exer13');
+    }
+
+    public function respostaExer13(Request $request){
+        $metro = $request->metro;
+        $cm = $metro * 100;
+        return view('exer13', ['cm' => $cm]);
+    }
 }
