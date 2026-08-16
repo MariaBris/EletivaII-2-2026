@@ -38,4 +38,21 @@ class ExerciciosController extends Controller
         $mult = $valor1 * $valor2;
         return view('exer3', ['mult' => $mult]);
     }
+
+    public function abrirFormExer4(){
+        return view('exer4');
+    }
+
+    public function respostaExer4(Request $request){
+        $valor1 = $request->valor1;
+        $valor2 = $request->valor2;
+        if ($valor2 == 0){
+            $divi = "Divisão por 0!";
+            return view('exer4', ['divi' => $divi]);
+        } else{
+            $divi = $valor1 / $valor2;
+            return view('exer4', ['divi' => $divi]);
+        }
+        
+    }
 }
