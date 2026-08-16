@@ -52,17 +52,16 @@ class ExerciciosController extends Controller
         } else{
             $divi = $valor1 / $valor2;
             return view('exer4', ['divi' => $divi]);
-        }
-        
+        } 
     }
 
     public function abrirFormExer5(){
         return view('exer5');
     }
     public function respostaExer5(Request $request){
-        $valor1 = $_POST['valor1'];
-        $valor2 = $_POST['valor2'];
-        $valor3 = $_POST['valor3'];
+        $valor1 = $request->valor1;
+        $valor2 = $request->valor2;
+        $valor3 = $request->valor3;
         $med = ($valor1 + $valor2 + $valor3) / 3;
         return view('exer5', ['med' => number_format($med, 2, ',', '.')]);
     }
@@ -71,7 +70,7 @@ class ExerciciosController extends Controller
         return view('exer6');
     }
     public function respostaExer6(Request $request){
-        $celsius = $_POST['celsius'];
+        $celsius = $request->celsius;
         $temp = ($celsius * (9/5)) + 32;
         return view('exer6', ['temp' => $temp]);
     }
@@ -80,8 +79,20 @@ class ExerciciosController extends Controller
         return view('exer7');
     }
     public function respostaExer7(Request $request){
-        $tempF = $_POST['tempF'];
+        $tempF = $request->tempF;
         $temp = (5 / 9) * ($tempF - 32);
         return view('exer7', ['temp' => $temp]);
     }
+
+    public function abrirFormExer8(){
+        return view('exer8');
+    }
+
+    public function respostaExer8(Request $request){
+        $valor1 = $request->valor1;
+        $valor2 = $request->valor2;
+        $area = $valor1 * $valor2;
+        return view('exer8', ['area' => $area]);
+    }
+
 }
