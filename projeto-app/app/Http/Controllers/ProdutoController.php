@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Categoria;//precisa declarar quando for usar tipo o categoria::all()
 use App\Models\Produto;
 use Illuminate\Http\Request;
 
@@ -22,7 +23,8 @@ class ProdutoController extends Controller
      */
     public function create()
     {
-        //
+        $categorias = Categoria::all();
+        return view('produto.create', compact('categorias'));
     }
 
     /**
@@ -30,7 +32,8 @@ class ProdutoController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        Produto::create($request->all());//ele cria no bd
+        return redirect()->route('produto.index');//implementar mensagens
     }
 
     /**
@@ -44,17 +47,21 @@ class ProdutoController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(Produto $produto)
+    public function edit($id)
     {
-        //
+        $produto = Produto::findOrFail($id);
+        $categorias = Categoria::all();
+        return view('produto.edit', compact('produto', 'categorias'));
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Produto $produto)
+    public function update(Request $request, int $id)
     {
-        //
+        $produto = Produto::findOrFail($id);
+        $produto->update($request->all());
+        return redirect()->route('produto.index');
     }
 
     /**

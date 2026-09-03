@@ -10,9 +10,8 @@
 
 <body>
     <div class="container py-3">
-
         <h2>Registros de Produtos</h2>
-        <a href="#" class="btn btn-success mb-3">Novo Registro</a>
+        <a href="/produto/create" class="btn btn-success mb-3">Novo Registro</a>
         <table class="table table-hover table-striped">
             <thead>
                 <tr>
@@ -27,12 +26,12 @@
                 @foreach($produtos as $p) 
                 <tr>
                     <td>{{ $p->id }}</td>
-                    <td>{{ $p->nome}}</td>
-                    <td>{{ $p->categoria_id}}</td>
-                    <td>{{ $p->preco}}</td>
+                    <td>{{ $p->nome }}</td>
+                    <td>{{ $p->categoria->nome }}</td>
+                    <td>{{ $p->preco }}</td>
                     <td class="d-flex gap-2">
-                        <a href="#" class="btn btn-sm btn-warning">Editar</a>
-                        <a href="#" class="btn btn-sm btn-info">Consultar</a>
+                        <a href="/produto/{{$p->id}}/edit" class="btn btn-sm btn-warning">Editar</a>
+                        <a href="/produto/{{$p->id" class="btn btn-sm btn-info">Consultar</a>
                     </td>
                 </tr>
                 @endforeach
