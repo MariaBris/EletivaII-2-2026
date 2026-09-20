@@ -29,17 +29,16 @@ class CategoriaController extends Controller
      */
     public function store(Request $request)
     {
-        if (Categoria::create($request->all())) {
-            return redirect()->route('categorias.index')->with('mensagem', 'Categoria inserida com sucesso!!');
-        } else {
-            return redirect()->route('categorias.index')->with('mensagem', 'Erro ao inserir categoria!!"');
-        }
+        if(Categoria::create($request->all()))
+            return redirect()->route('categorias.index')->with('mensagem', 'Categoria inserida com sucesso!');
+        else
+            return redirect()->route('categorias.index')->with('mensagem', 'Erro ao inserir a categoria!');
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(Categoria $categoria)
+    public function show(string $id)
     {
         $categoria = Categoria::findOrFail($id);
         return view('categorias.show', compact('categoria'));
@@ -48,35 +47,33 @@ class CategoriaController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(Categoria $categoria)
+    public function edit(string $id)
     {
         $categoria = Categoria::findOrFail($id);
         return view('categorias.edit', compact('categoria'));
     }
 
-
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Categoria $categoria)
+    public function update(Request $request, string $id)
     {
-        if ($categoria->update($request->all)) {
-            return redirect()->route('categorias.index')->with('mensagem', 'Categoria alterada com sucesso!!');
-        } else {
-            return redirect()->route('categorias.index')->with('mensagem', 'Erro ao alterar categoria!!"');
-        }
+        $categoria = Categoria::findOrFail($id);
+        if($categoria->update($request->all()))
+            return redirect()->route('categorias.index')->with('mensagem', 'Categoria alterada com sucesso!');
+        else
+            return redirect()->route('categorias.index')->with('mensagem', 'Erro ao alterar a categoria!');
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Categoria $categoria)
+    public function destroy(string $id)
     {
         $categoria = Categoria::findOrFail($id);
-        if($categoria->deete()){
-            return redirect()->route('categorias.index')->with('mensagem', 'Categoria excluída com sucesso!!');
-        } else {
-            return redirect()->route('categorias.index')->with('mensagem', 'Erro ao excluir categoria!!"');
-        }
+        if($categoria->delete())
+            return redirect()->route('categorias.index')->with('mensagem', 'Categoria excluída!');
+        else
+            return redirect()->route('categorias.index')->with('mensagem', "Erro ao excluir a categoria!");
     }
 }
