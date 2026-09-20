@@ -29,7 +29,7 @@ class CategoriaController extends Controller
      */
     public function store(Request $request)
     {
-        if(Categoria::created($request->all()))
+        if(Categoria::create($request->all()))
             return redirect()->route('categorias.index')->with('mensagem', 'Categoria inserida com sucesso!');
         else
             return redirect()->route('categorias.index')->with('mensagem', 'Erro ao inserir a categoria!');
