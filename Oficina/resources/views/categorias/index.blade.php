@@ -29,8 +29,8 @@
                 <td>{{ $c->nome }}</td>
                 <td>{{ $c->descricao }}</td>
                 <td class="d-flex gap-2">
-                    <a href="/categorias/{{ $c->id }}/edit" class="btn btn-sm btn-warning">Editar</a>
-                    <a href="/categorias/{{ $c->id }}" class="btn btn-sm btn-info">Consultar</a>
+                    <a href="/categorias/{{ $c->id }}/edit" class="btn btn-sm btn-primary">Editar</a>
+                    <a href="/categorias/{{ $c->id }}" class="btn btn-sm btn-outline-primary">Consultar</a>
                 </td>
             </tr>
             @endforeach
