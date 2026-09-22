@@ -19,7 +19,7 @@
         <input type="text" id="descricao" name="descricao" class="form-control" disabled value="{{ $categoria->descricao }}">
     </div>
 
-    <div class="mt-4">
+    <div class="d-flex justify-content-end gap-2 mt-3">
         <button type="submit" class="btn btn-danger" onclick="return confirm('Tem certeza que deseja excluir esta categoria?')">Excluir</button>
         <a href="/categorias" class="btn btn-outline-dark ms-2">Voltar</a>
     </div>

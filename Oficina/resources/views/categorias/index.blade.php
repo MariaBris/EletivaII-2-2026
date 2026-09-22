@@ -16,21 +16,21 @@
     <table class="table table-hover table-striped shadow-sm bg-white rounded">
         <thead>
             <tr>
-                <th>ID</th>
                 <th>Nome</th>
                 <th>Descrição</th>
-                <th>Ações</th>
+                <th class="col-acoes">Ações</th>
             </tr>
         </thead>
         <tbody>
             @foreach($categorias as $c)
             <tr>
-                <td>{{ $c->id }}</td>
                 <td>{{ $c->nome }}</td>
                 <td>{{ $c->descricao }}</td>
-                <td class="d-flex gap-2">
-                    <a href="/categorias/{{ $c->id }}/edit" class="btn btn-sm btn-primary">Editar</a>
-                    <a href="/categorias/{{ $c->id }}" class="btn btn-sm btn-outline-primary">Consultar</a>
+                <td class="col-acoes">
+                    <div class="d-flex justify-content-end gap-2">
+                        <a href="/categorias/{{ $c->id }}/edit" class="btn btn-sm btn-primary" title="Editar"><i class="bi bi-pencil-square"></i></a>
+                        <a href="/categorias/{{ $c->id }}" class="btn btn-sm btn-outline-primary" title="Consultar"><i class="bi bi-eye"></i></a>
+                    </div>
                 </td>
             </tr>
             @endforeach

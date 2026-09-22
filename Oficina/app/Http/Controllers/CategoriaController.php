@@ -60,9 +60,9 @@ class CategoriaController extends Controller
     {
         $categoria = Categoria::findOrFail($id);
         if($categoria->update($request->all()))
-            return redirect()->route('categorias.index')->with('mensagem', 'Categoria alterada com sucesso!');
+            return redirect()->back()->with('mensagem', 'Categoria alterada com sucesso!');
         else
-            return redirect()->route('categorias.index')->with('mensagem', 'Erro ao alterar a categoria!');
+            return redirect()->back()->with('mensagem', 'Erro ao alterar a categoria!');
     }
 
     /**
