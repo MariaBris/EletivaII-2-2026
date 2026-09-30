@@ -9,7 +9,7 @@ class Produto extends Model
     protected $table = "produtos";//para acessar as classes filhas, permite que a classe que declara ele acesse ele e a classe filha acesse ele
     public $incrementing = true;
     protected $fillable = [
-        'nome', 'descricao', 'preco', 'estoque', ' categoria_id', 'imagem'
+        'nome', 'descricao', 'preco', 'estoque', 'categoria_id', 'imagem'
     ];
     protected $casts = [
         'preco' => 'decimal:2',

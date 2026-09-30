@@ -15,6 +15,21 @@
                 <li class="nav-item">
                     <a class="nav-link" href="/produtos">Produtos</a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/servicos">Serviços</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/produtos">Produtos</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/clientes">Clientes</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/veiculos">Veículos</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/os">Ordens de Serviço</a>
+                </li>
             </ul>
         </div>
     </div>

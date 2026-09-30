@@ -1,23 +1,16 @@
--- MySQL Workbench Forward Engineering
-
 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0;
 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0;
 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
 
--- -----------------------------------------------------
--- Schema mydb
--- -----------------------------------------------------
 
--- -----------------------------------------------------
--- Schema mydb
 -- -----------------------------------------------------
 CREATE SCHEMA IF NOT EXISTS `mydb` DEFAULT CHARACTER SET utf8 ;
 USE `mydb` ;
 
 -- -----------------------------------------------------
--- Table `mydb`.`users`
+-- Table `users`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `mydb`.`users` (
+CREATE TABLE IF NOT EXISTS `users` (
   `id` BIGINT NOT NULL,
   `name` VARCHAR(255) NOT NULL,
   `email` VARCHAR(255) NOT NULL,
@@ -31,9 +24,9 @@ ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `mydb`.`categorias`
+-- Table `categorias`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `mydb`.`categorias` (
+CREATE TABLE IF NOT EXISTS `categorias` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
   `nome` VARCHAR(255) NOT NULL,
   `descricao` TEXT NULL,
@@ -44,9 +37,9 @@ ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `mydb`.`produtos`
+-- Table `produtos`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `mydb`.`produtos` (
+CREATE TABLE IF NOT EXISTS `produtos` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
   `nome` VARCHAR(255) NOT NULL,
   `descricao` TEXT NULL,
@@ -59,16 +52,16 @@ CREATE TABLE IF NOT EXISTS `mydb`.`produtos` (
   INDEX `fk_produtos_categorias1_idx` (`categoria_id` ASC),
   CONSTRAINT `fk_produtos_categorias1`
     FOREIGN KEY (`categoria_id`)
-    REFERENCES `mydb`.`categorias` (`id`)
+    REFERENCES `categorias` (`id`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `mydb`.`veiculos`
+-- Table `veiculos`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `mydb`.`veiculos` (
+CREATE TABLE IF NOT EXISTS `veiculos` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
   `placa` VARCHAR(10) NOT NULL,
   `marca` VARCHAR(100) NULL,
@@ -82,16 +75,16 @@ CREATE TABLE IF NOT EXISTS `mydb`.`veiculos` (
   INDEX `fk_veiculos_users1_idx` (`user_id` ASC),
   CONSTRAINT `fk_veiculos_users1`
     FOREIGN KEY (`user_id`)
-    REFERENCES `mydb`.`users` (`id`)
+    REFERENCES `users` (`id`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `mydb`.`enderecos`
+-- Table `enderecos`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `mydb`.`enderecos` (
+CREATE TABLE IF NOT EXISTS `enderecos` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
   `endereco` VARCHAR(255) NOT NULL,
   `cidade` VARCHAR(255) NOT NULL,
@@ -104,16 +97,16 @@ CREATE TABLE IF NOT EXISTS `mydb`.`enderecos` (
   INDEX `fk_enderecos_users_idx` (`user_id` ASC),
   CONSTRAINT `fk_enderecos_users`
     FOREIGN KEY (`user_id`)
-    REFERENCES `mydb`.`users` (`id`)
+    REFERENCES `users` (`id`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `mydb`.`pedidos`
+-- Table `pedidos`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `mydb`.`pedidos` (
+CREATE TABLE IF NOT EXISTS `pedidos` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
   `status` ENUM('ABERTO', 'PAGO', 'ENVIADO', 'CONCLUIDO', 'CANCELADO') NOT NULL,
   `total` DECIMAL(10,2) NOT NULL,
@@ -126,21 +119,21 @@ CREATE TABLE IF NOT EXISTS `mydb`.`pedidos` (
   INDEX `fk_pedidos_veiculos1_idx` (`veiculo_id` ASC),
   CONSTRAINT `fk_pedidos_users1`
     FOREIGN KEY (`user_id`)
-    REFERENCES `mydb`.`users` (`id`)
+    REFERENCES `users` (`id`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
   CONSTRAINT `fk_pedidos_veiculos1`
     FOREIGN KEY (`veiculo_id`)
-    REFERENCES `mydb`.`veiculos` (`id`)
+    REFERENCES `veiculos` (`id`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `mydb`.`itens_pedido`
+-- Table `itens_pedido`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `mydb`.`itens_pedido` (
+CREATE TABLE IF NOT EXISTS `itens_pedido` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
   `quantidade` INT NOT NULL,
   `preco` DECIMAL(10,2) NOT NULL,
@@ -153,12 +146,12 @@ CREATE TABLE IF NOT EXISTS `mydb`.`itens_pedido` (
   INDEX `fk_itens_pedidos_produtos1_idx` (`produto_id` ASC),
   CONSTRAINT `fk_itens_pedidos_pedidos1`
     FOREIGN KEY (`pedido_id`)
-    REFERENCES `mydb`.`pedidos` (`id`)
+    REFERENCES `pedidos` (`id`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
   CONSTRAINT `fk_itens_pedidos_produtos1`
     FOREIGN KEY (`produto_id`)
-    REFERENCES `mydb`.`produtos` (`id`)
+    REFERENCES `produtos` (`id`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
