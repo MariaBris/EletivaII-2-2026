@@ -29,7 +29,7 @@ class VeiculosController extends Controller
      */
     public function store(Request $request)
     {
-        if(Veiculos::create($requets->all()))
+        if(Veiculos::create($request->all()))
             return redirect()->route('veiculos.index')->with('mensagem', 'Veículo inserido com sucesso!');
         else
             return redirect()->route('categorias.index')->with('mensagem', 'Erro ao inserir o veículo!');
