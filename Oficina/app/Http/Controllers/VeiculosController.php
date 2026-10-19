@@ -32,9 +32,15 @@ class VeiculosController extends Controller
     /**
      * Show the form for creating a new resource.
      */
-    public function create()
+    public function create(Request $request)
     {
-        $usuarios = User::where('role', 'CLI')->orderBy('name')->get();
+        if ($request->user()->role === 'ADM') {
+            $usuarios = User::where('role', 'CLI')
+                ->orderBy('name')
+                ->get();
+        } else {
+            $usuarios = User::where('id', $request->user()->id)->get();
+        }
 
         return view('veiculos.create', compact('usuarios'));
     }
@@ -44,6 +50,12 @@ class VeiculosController extends Controller
      */
     public function store(Request $request)
     {
+        if ($request->user()->role !== 'ADM') {
+            $request->merge([
+                'user_id' => $request->user()->id,
+            ]);
+        }
+
         Veiculos::create($this->validar($request));
 
         return redirect()->route('veiculos.index')
