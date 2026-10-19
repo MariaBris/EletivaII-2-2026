@@ -1,8 +1,3 @@
--- Criacao inicial do banco da oficina.
--- Execute o arquivo inteiro no MySQL Workbench.
--- Pode ser repetido: nao apaga tabelas nem registros.
--- IF NOT EXISTS nao atualiza a estrutura de tabelas existentes.
-
 CREATE DATABASE IF NOT EXISTS `oficina`
   DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE `oficina`;
