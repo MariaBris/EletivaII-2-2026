@@ -79,11 +79,13 @@
         .img-tabela {
             width: 45px;
             height: 45px;
-            object-fit: cover; /* Garante que a imagem não distorce, preenchendo o quadrado perfeitamente */
+            object-fit: cover;
+            /* Garante que a imagem não distorce, preenchendo o quadrado perfeitamente */
             border-radius: 6px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
     </style>
+    @stack('estilos')
 </head>
 
 <body class="d-flex flex-column min-vh-100">

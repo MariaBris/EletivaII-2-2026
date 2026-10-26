@@ -1,0 +1,44 @@
+@page {
+    size: A4;
+    margin: 15mm;
+}
+
+@media print {
+    body {
+        background: white !important;
+        min-height: auto !important;
+    }
+
+    nav,
+    header,
+    footer,
+    .navbar,
+    .navbar-custom,
+    .footer-custom,
+    .nao-imprimir,
+    button,
+    .btn {
+        display: none !important;
+    }
+
+    .container {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    .card {
+        box-shadow: none !important;
+    }
+
+    .table-responsive {
+        overflow: visible !important;
+    }
+
+    thead {
+        display: table-header-group;
+    }
+
+    tr {
+        break-inside: avoid;
+    }
+}

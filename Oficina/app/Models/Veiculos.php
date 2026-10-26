@@ -10,11 +10,18 @@ class Veiculos extends Model
 
     public $incrementing = true;
 
-    protected $fillable = ['placa', 'marca', 'modelo', 'ano', 'user_id'];
+    protected $fillable = [
+        'placa', 'marca',  'modelo', 'ano',  'user_id', 'cliente_id'
+    ];
 
     // Cada veículo pertence a um usuário.
     public function usuario()
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function cliente()
+    {
+        return $this->belongsTo(Cliente::class, 'cliente_id');
     }
 }

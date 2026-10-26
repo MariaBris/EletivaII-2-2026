@@ -22,6 +22,7 @@
         ['categorias.index', 'Categorias', 'bi-tags', 'Organize as categorias dos produtos.'],
         ['produtos.index', 'Produtos', 'bi-box-seam', 'Consulte os produtos da oficina.'],
         ['veiculos.index', 'Veículos', 'bi-car-front', 'Consulte os veículos cadastrados.'],
+        ['servicos.index', 'Serviços', 'bi-wrench-adjustable', 'Consulte os serviços cadastrados.'],
         ['profile.edit', 'Meu perfil', 'bi-person-circle', 'Atualize seus dados e sua senha.']
     ] as [$rota, $titulo, $icone, $descricao])
         @if(auth()->user()->role === 'ADM' || in_array($rota, ['veiculos.index', 'profile.edit']))

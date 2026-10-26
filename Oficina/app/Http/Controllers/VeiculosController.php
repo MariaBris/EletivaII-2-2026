@@ -2,14 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Cliente;
 use App\Models\Veiculos;
-use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 
 class VeiculosController extends Controller
 {
@@ -18,13 +17,11 @@ class VeiculosController extends Controller
      */
     public function index(Request $request)
     {
-        $consulta = Veiculos::with('usuario');
+        $this->autorizarAcesso($request);
 
-        if ($request->user()->role !== 'ADM') {
-            $consulta->where('user_id', $request->user()->id);
-        }
-
-        $veiculos = $consulta->get();
+        $veiculos = Veiculos::with('cliente')
+            ->orderBy('placa')
+            ->get();
 
         return view('veiculos.index', compact('veiculos'));
     }
@@ -34,15 +31,11 @@ class VeiculosController extends Controller
      */
     public function create(Request $request)
     {
-        if ($request->user()->role === 'ADM') {
-            $usuarios = User::where('role', 'CLI')
-                ->orderBy('name')
-                ->get();
-        } else {
-            $usuarios = User::where('id', $request->user()->id)->get();
-        }
+        $this->autorizarAcesso($request);
 
-        return view('veiculos.create', compact('usuarios'));
+        $clientes = Cliente::orderBy('nome')->get();
+
+        return view('veiculos.create', compact('clientes'));
     }
 
     /**
@@ -50,13 +43,12 @@ class VeiculosController extends Controller
      */
     public function store(Request $request)
     {
-        if ($request->user()->role !== 'ADM') {
-            $request->merge([
-                'user_id' => $request->user()->id,
-            ]);
-        }
+        $this->autorizarAcesso($request);
 
-        Veiculos::create($this->validar($request));
+        $dados = $this->validar($request);
+        $dados['user_id'] = null;
+
+        Veiculos::create($dados);
 
         return redirect()->route('veiculos.index')
             ->with('mensagem', 'Veículo cadastrado com sucesso!');
@@ -67,13 +59,9 @@ class VeiculosController extends Controller
      */
     public function show(Request $request, string $id)
     {
-        $consulta = Veiculos::with('usuario');
+        $this->autorizarAcesso($request);
 
-        if ($request->user()->role !== 'ADM') {
-            $consulta->where('user_id', $request->user()->id);
-        }
-
-        $veiculo = $consulta->findOrFail($id);
+        $veiculo = Veiculos::with('cliente')->findOrFail($id);
 
         return view('veiculos.show', compact('veiculo'));
     }
@@ -81,12 +69,14 @@ class VeiculosController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(string $id)
+    public function edit(Request $request, string $id)
     {
-        $veiculo = Veiculos::findOrFail($id);
-        $usuarios = User::where('role', 'CLI')->orderBy('name')->get();
+        $this->autorizarAcesso($request);
 
-        return view('veiculos.edit', compact('veiculo', 'usuarios'));
+        $veiculo = Veiculos::findOrFail($id);
+        $clientes = Cliente::orderBy('nome')->get();
+
+        return view('veiculos.edit', compact('veiculo', 'clientes'));
     }
 
     /**
@@ -94,20 +84,14 @@ class VeiculosController extends Controller
      */
     public function update(Request $request, string $id)
     {
+        $this->autorizarAcesso($request);
+
         $veiculo = Veiculos::findOrFail($id);
         $dados = $this->validar($request, $veiculo->id);
+        $dados['user_id'] = null;
 
         DB::transaction(function () use ($id, $dados) {
             $veiculo = Veiculos::lockForUpdate()->findOrFail($id);
-
-            if (
-                $veiculo->user_id != $dados['user_id']
-                && $this->temHistorico($id)
-            ) {
-                throw ValidationException::withMessages([
-                    'user_id' => 'Este veículo possui histórico e não pode mudar de proprietário.',
-                ]);
-            }
 
             $veiculo->update($dados);
         });
@@ -119,8 +103,10 @@ class VeiculosController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id)
+    public function destroy(Request $request, string $id)
     {
+        $this->autorizarAcesso($request);
+
         $veiculo = Veiculos::findOrFail($id);
 
         if ($this->temHistorico($id)) {
@@ -143,6 +129,15 @@ class VeiculosController extends Controller
             ->with('mensagem', 'Veículo excluído com sucesso!');
     }
 
+    private function autorizarAcesso(Request $request)
+    {
+        abort_unless(
+            $request->user()
+                && in_array($request->user()->role, ['ADM', 'FUNC'], true),
+            403
+        );
+    }
+
     private function validar(Request $request, $id = null)
     {
         if (is_string($request->input('placa'))) {
@@ -159,15 +154,15 @@ class VeiculosController extends Controller
             $regraPlaca->ignore($id);
         }
 
-        return $request->validate([
+        $dados = $request->validate([
             'placa' => ['required', 'string', 'max:10', $regraPlaca],
             'marca' => ['nullable', 'string', 'max:100'],
             'modelo' => ['nullable', 'string', 'max:100'],
             'ano' => ['nullable', 'integer', 'between:1886,2100'],
-            'user_id' => [
-                'required',
+            'cliente_id' => [
+                'nullable',
                 'integer',
-                Rule::exists('users', 'id')->where('role', 'CLI'),
+                Rule::exists('clientes', 'id'),
             ],
         ], [
             'required' => 'O campo :attribute é obrigatório.',
@@ -176,9 +171,13 @@ class VeiculosController extends Controller
             'placa.unique' => 'Esta placa já está cadastrada.',
             'ano.integer' => 'O ano deve ser um número inteiro.',
             'ano.between' => 'Informe um ano entre 1886 e 2100.',
-            'user_id.integer' => 'Selecione um cliente válido.',
-            'user_id.exists' => 'Selecione um cliente cadastrado com perfil CLI.',
+            'cliente_id.integer' => 'Selecione um cliente válido.',
+            'cliente_id.exists' => 'Selecione um cliente cadastrado.',
         ]);
+
+        $dados['cliente_id'] = $dados['cliente_id'] ?? null;
+
+        return $dados;
     }
 
     private function temHistorico($id)
