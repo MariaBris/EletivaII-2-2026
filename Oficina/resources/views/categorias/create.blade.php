@@ -1,25 +1,24 @@
 @extends('layout')
 
-@section('title', 'Nova Categoria')
+@section('title', 'Nova Categoria - Mazotto')
 
 @section('content')
-<div class="mb-4">
-    <h1>Nova Categoria</h1>
+<div class="barra-acoes d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+    <h1 class="h3 mb-0">Nova Categoria</h1>
+
+    <div class="d-flex flex-wrap gap-2">
+        <button type="submit" form="formulario-categoria" class="btn btn-primary">Salvar</button>
+        <a href="{{ route('categorias.index') }}" class="btn btn-secondary">Cancelar</a>
+    </div>
 </div>
 
-<form method="post" action="/categorias">
-    @csrf
-    <div class="mb-3">
-        <label for="nome" class="form-label">Nome da categoria</label>
-        <input type="text" id="nome" name="nome" class="form-control" required>
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-4">
+        <form id="formulario-categoria" method="POST" action="{{ route('categorias.store') }}">
+            @csrf
+
+            @include('categorias.form', ['categoria' => null])
+        </form>
     </div>
-    <div class="mb-3">
-        <label for="descricao" class="form-label">Descrição</label>
-        <input type="text" id="descricao" name="descricao" class="form-control" required>
-    </div>
-    <div class="d-flex justify-content-end gap-2 mt-3">
-        <button type="submit" class="btn btn-primary">Salvar</button>
-        <a href="/categorias" class="btn btn-secondary ms-2">Cancelar</a>
-    </div>
-</form>
+</div>
 @endsection

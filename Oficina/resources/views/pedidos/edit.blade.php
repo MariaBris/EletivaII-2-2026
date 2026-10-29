@@ -5,27 +5,34 @@
 @section('content')
 @php
 $andamentos = [
-'ABERTO' => 'Aberto',
-'EM_EXECUCAO' => 'Em execução',
-'PAGO' => 'Pago',
-'ENVIADO' => 'Enviado',
-'CONCLUIDO' => 'Concluído',
-'CANCELADO' => 'Cancelado',
+    'ABERTO' => 'Aberto',
+    'EM_EXECUCAO' => 'Em execução',
+    'PAGO' => 'Pago',
+    'ENVIADO' => 'Enviado',
+    'CONCLUIDO' => 'Concluído',
+    'CANCELADO' => 'Cancelado',
 ];
 
 $opcoesPorStatus = [
-'ABERTO' => ['ABERTO', 'EM_EXECUCAO', 'CONCLUIDO', 'CANCELADO'],
-'EM_EXECUCAO' => ['EM_EXECUCAO', 'CONCLUIDO', 'CANCELADO'],
-'ENVIADO' => ['ENVIADO', 'EM_EXECUCAO', 'CONCLUIDO', 'CANCELADO'],
-'PAGO' => ['PAGO'],
-'CONCLUIDO' => ['CONCLUIDO'],
-'CANCELADO' => ['CANCELADO'],
+    'ABERTO' => ['ABERTO', 'EM_EXECUCAO', 'CONCLUIDO', 'CANCELADO'],
+    'EM_EXECUCAO' => ['EM_EXECUCAO', 'CONCLUIDO', 'CANCELADO'],
+    'ENVIADO' => ['ENVIADO', 'EM_EXECUCAO', 'CONCLUIDO', 'CANCELADO'],
+    'PAGO' => ['PAGO'],
+    'CONCLUIDO' => ['CONCLUIDO'],
+    'CANCELADO' => ['CANCELADO'],
 ];
 
 $opcoes = $opcoesPorStatus[$pedido->status] ?? [$pedido->status];
 @endphp
 
-<h1 class="h3 mb-4">Atualizar ordem de serviço #{{ $pedido->id }}</h1>
+<div class="barra-acoes d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+    <h1 class="h3 mb-0">Atualizar ordem de serviço #{{ $pedido->id }}</h1>
+
+    <div class="d-flex flex-wrap gap-2">
+        <button type="submit" form="formulario-editar-os" class="btn btn-primary">Salvar</button>
+        <a href="{{ route('pedidos.show', $pedido->id) }}" class="btn btn-secondary">Cancelar</a>
+    </div>
+</div>
 
 @if(session('mensagem'))
 <div class="alert alert-success" role="status">{{ session('mensagem') }}</div>
@@ -70,7 +77,7 @@ $opcoes = $opcoesPorStatus[$pedido->status] ?? [$pedido->status];
 
 <div class="card border-0 shadow-sm">
     <div class="card-body p-4">
-        <form method="POST" action="{{ route('pedidos.update', $pedido->id) }}">
+        <form id="formulario-editar-os" method="POST" action="{{ route('pedidos.update', $pedido->id) }}">
             @csrf
             @method('PUT')
 
@@ -94,12 +101,7 @@ $opcoes = $opcoesPorStatus[$pedido->status] ?? [$pedido->status];
                 <textarea id="observacoes" name="observacoes" class="form-control" rows="4" maxlength="5000">{{ old('observacoes', $pedido->observacoes) }}</textarea>
             </div>
 
-            <p class="text-muted">As peças, os serviços e os preços registrados na abertura são preservados.</p>
-
-            <div class="d-flex justify-content-end gap-2 mt-4">
-                <a href="{{ route('pedidos.show', $pedido->id) }}" class="btn btn-outline-dark">Voltar</a>
-                <button type="submit" class="btn btn-primary">Salvar alterações</button>
-            </div>
+            <p class="text-muted mb-0">As peças, os serviços e os preços registrados na abertura são preservados.</p>
         </form>
     </div>
 </div>

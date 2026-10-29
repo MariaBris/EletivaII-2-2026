@@ -5,12 +5,12 @@
 @section('content')
 @php
 $andamentos = [
-'ABERTO' => 'Aberto',
-'EM_EXECUCAO' => 'Em execução',
-'PAGO' => 'Pago',
-'ENVIADO' => 'Enviado',
-'CONCLUIDO' => 'Concluído',
-'CANCELADO' => 'Cancelado',
+    'ABERTO' => 'Aberto',
+    'EM_EXECUCAO' => 'Em execução',
+    'PAGO' => 'Pago',
+    'ENVIADO' => 'Enviado',
+    'CONCLUIDO' => 'Concluído',
+    'CANCELADO' => 'Cancelado',
 ];
 @endphp
 
@@ -18,8 +18,8 @@ $andamentos = [
     <h1 class="h3 mb-0">Ordens de serviço</h1>
 
     <div class="d-flex gap-2">
-        <a href="{{ route('dashboard') }}" class="btn btn-outline-dark">Voltar ao painel</a>
-        <a href="{{ route('pedidos.create') }}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i> Nova ordem de serviço</a>
+        <a href="{{ route('dashboard') }}" class="btn btn-outline-dark">Voltar ao início</a>
+        <a href="{{ route('pedidos.create') }}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Nova ordem de serviço</a>
     </div>
 </div>
 
@@ -45,13 +45,13 @@ $andamentos = [
     <table class="table table-striped table-hover align-middle bg-white">
         <thead>
             <tr>
-                <th>ordem de serviço</th>
+                <th>Ordem de serviço</th>
                 <th>Abertura</th>
                 <th>Cliente</th>
                 <th>Veículo</th>
                 <th>Andamento</th>
                 <th>Total</th>
-                <th class="text-end">Ações</th>
+                <th class="col-acoes text-end">Ações</th>
             </tr>
         </thead>
 
@@ -65,10 +65,10 @@ $andamentos = [
                 <td>{{ $andamentos[$pedido->status] ?? $pedido->status }}</td>
                 <td class="text-nowrap">R$ {{ number_format($pedido->total, 2, ',', '.') }}</td>
 
-                <td>
+                <td class="col-acoes">
                     <div class="d-flex justify-content-end flex-wrap gap-2">
-                        <a href="{{ route('pedidos.show', $pedido->id) }}" class="btn btn-sm btn-outline-primary">Consultar</a>
-                        <a href="{{ route('pedidos.edit', $pedido->id) }}" class="btn btn-sm btn-primary">Atualizar</a>
+                        <a href="{{ route('pedidos.show', $pedido->id) }}" class="btn btn-sm btn-outline-dark" title="Consultar" aria-label="Consultar ordem de serviço"><i class="bi bi-eye" aria-hidden="true"></i></a>
+                        <a href="{{ route('pedidos.edit', $pedido->id) }}" class="btn btn-sm btn-primary" title="Atualizar" aria-label="Atualizar ordem de serviço"><i class="bi bi-pencil-square" aria-hidden="true"></i></a>
                     </div>
                 </td>
             </tr>

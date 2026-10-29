@@ -5,9 +5,10 @@
 @section('content')
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
     <h1 class="h3 mb-0">Serviços e mão de obra</h1>
+
     <div class="d-flex gap-2">
-        <a href="{{ route('dashboard') }}" class="btn btn-outline-dark">Voltar ao painel</a>
-        <a href="{{ route('servicos.create') }}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i> Novo serviço</a>
+        <a href="{{ route('dashboard') }}" class="btn btn-outline-dark">Voltar ao início</a>
+        <a href="{{ route('servicos.create') }}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Novo serviço</a>
     </div>
 </div>
 
@@ -25,7 +26,7 @@
             <tr>
                 <th>Serviço</th>
                 <th>Mão de obra</th>
-                <th class="text-end">Ações</th>
+                <th class="col-acoes text-end">Ações</th>
             </tr>
         </thead>
 
@@ -33,15 +34,16 @@
             @forelse($servicos as $servico)
             <tr>
                 <td>{{ $servico->nome }}</td>
-                <td>R$ {{ number_format($servico->preco, 2, ',', '.') }}</td>
-                <td>
+                <td class="text-nowrap">R$ {{ number_format($servico->preco, 2, ',', '.') }}</td>
+                <td class="col-acoes">
                     <div class="d-flex justify-content-end flex-wrap gap-2">
-                        <a href="{{ route('servicos.show', $servico->id) }}" class="btn btn-sm btn-outline-primary">Consultar</a>
-                        <a href="{{ route('servicos.edit', $servico->id) }}" class="btn btn-sm btn-primary">Editar</a>
-                        <form method="POST" action="{{ route('servicos.destroy', $servico->id) }}" onsubmit="return confirm('Excluir este serviço?');">
+                        <a href="{{ route('servicos.show', $servico->id) }}" class="btn btn-sm btn-outline-dark" title="Consultar" aria-label="Consultar serviço"><i class="bi bi-eye" aria-hidden="true"></i></a>
+                        <a href="{{ route('servicos.edit', $servico->id) }}" class="btn btn-sm btn-primary" title="Editar" aria-label="Editar serviço"><i class="bi bi-pencil-square" aria-hidden="true"></i></a>
+
+                        <form method="POST" action="{{ route('servicos.destroy', $servico->id) }}" class="m-0" onsubmit="return confirm('Excluir este serviço?');">
                             @csrf
                             @method('DELETE')
-                            <button type="submit" class="btn btn-sm btn-danger">Excluir</button>
+                            <button type="submit" class="btn btn-sm btn-danger" title="Excluir" aria-label="Excluir serviço"><i class="bi bi-trash" aria-hidden="true"></i></button>
                         </form>
                     </div>
                 </td>

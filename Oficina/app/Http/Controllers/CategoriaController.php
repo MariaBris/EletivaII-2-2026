@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Categoria;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 
 class CategoriaController extends Controller
@@ -13,6 +14,7 @@ class CategoriaController extends Controller
     public function index()
     {
         $categorias = Categoria::all();
+
         return view('categorias.index', compact('categorias'));
     }
 
@@ -29,10 +31,12 @@ class CategoriaController extends Controller
      */
     public function store(Request $request)
     {
-        if(Categoria::create($request->all()))
-            return redirect()->route('categorias.index')->with('mensagem', 'Categoria inserida com sucesso!');
-        else
-            return redirect()->route('categorias.index')->with('mensagem', 'Erro ao inserir a categoria!');
+        $dados = $this->validar($request);
+
+        Categoria::create($dados);
+
+        return redirect()->route('categorias.index')
+            ->with('mensagem', 'Categoria inserida com sucesso!');
     }
 
     /**
@@ -41,6 +45,7 @@ class CategoriaController extends Controller
     public function show(string $id)
     {
         $categoria = Categoria::findOrFail($id);
+
         return view('categorias.show', compact('categoria'));
     }
 
@@ -50,6 +55,7 @@ class CategoriaController extends Controller
     public function edit(string $id)
     {
         $categoria = Categoria::findOrFail($id);
+
         return view('categorias.edit', compact('categoria'));
     }
 
@@ -59,10 +65,15 @@ class CategoriaController extends Controller
     public function update(Request $request, string $id)
     {
         $categoria = Categoria::findOrFail($id);
-        if($categoria->update($request->all()))
-            return redirect()->back()->with('mensagem', 'Categoria alterada com sucesso!');
-        else
-            return redirect()->back()->with('mensagem', 'Erro ao alterar a categoria!');
+        $dados = $this->validar($request);
+
+        if ($categoria->update($dados)) {
+            return redirect()->route('categorias.index')
+                ->with('mensagem', 'Categoria alterada com sucesso!');
+        }
+
+        return back()->withInput()
+            ->withErrors(['categoria' => 'Não foi possível alterar a categoria.']);
     }
 
     /**
@@ -71,9 +82,35 @@ class CategoriaController extends Controller
     public function destroy(string $id)
     {
         $categoria = Categoria::findOrFail($id);
-        if($categoria->delete())
-            return redirect()->route('categorias.index')->with('mensagem', 'Categoria excluída!');
-        else
-            return redirect()->route('categorias.index')->with('mensagem', "Erro ao excluir a categoria!");
+
+        try {
+            if (!$categoria->delete()) {
+                return redirect()->route('categorias.index')
+                    ->with('erro', 'Não foi possível excluir a categoria.');
+            }
+        } catch (QueryException $erro) {
+            if (($erro->errorInfo[1] ?? null) == 1451) {
+                return redirect()->route('categorias.index')
+                    ->with('erro', 'Esta categoria possui registros vinculados, como produtos, e não pode ser excluída.');
+            }
+
+            throw $erro;
+        }
+
+        return redirect()->route('categorias.index')
+            ->with('mensagem', 'Categoria excluída com sucesso!');
+    }
+
+    private function validar(Request $request)
+    {
+        return $request->validate([
+            'nome' => ['required', 'string', 'max:255'],
+            'descricao' => ['nullable', 'string'],
+        ], [
+            'nome.required' => 'Informe o nome da categoria.',
+            'nome.string' => 'O nome deve ser um texto.',
+            'nome.max' => 'O nome deve ter até 255 caracteres.',
+            'descricao.string' => 'A descrição deve ser um texto.',
+        ]);
     }
 }

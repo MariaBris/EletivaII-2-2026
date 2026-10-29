@@ -1,6 +1,6 @@
 @extends('layout')
 
-@section('title', 'ordem de serviço #' . $pedido->id . ' - Mazotto')
+@section('title', 'Ordem de serviço #' . $pedido->id . ' - Mazotto')
 
 @push('estilos')
 <link rel="stylesheet" href="{{ asset('css/impressao_ordemS.css') }}?v=3" media="print">
@@ -18,13 +18,21 @@ $andamentos = [
 ];
 @endphp
 
-<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+<div class="barra-acoes d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
     <h1 class="h3 mb-0">Mazotto — Ordem de serviço #{{ $pedido->id }}</h1>
 
     <div class="d-flex flex-wrap gap-2 nao-imprimir">
         <a href="{{ route('pedidos.index') }}" class="btn btn-outline-dark">Voltar</a>
         <a href="{{ route('pedidos.edit', $pedido->id) }}" class="btn btn-primary">Atualizar</a>
-        <button type="button" class="btn btn-outline-dark" onclick="window.print()"><i class="bi bi-printer me-1"></i> Imprimir</button>
+        <button type="button" class="btn btn-outline-dark" onclick="window.print()">Imprimir</button>
+
+        @if(in_array($pedido->status, ['ABERTO', 'EM_EXECUCAO'], true))
+        <form method="POST" action="{{ route('pedidos.destroy', $pedido->id) }}" class="m-0" onsubmit="return confirm('Cancelar esta ordem de serviço? As peças com baixa registrada serão devolvidas ao estoque.');">
+            @csrf
+            @method('DELETE')
+            <button type="submit" class="btn btn-danger">Cancelar ordem de serviço</button>
+        </form>
+        @endif
     </div>
 </div>
 
@@ -145,15 +153,4 @@ $andamentos = [
         <p class="h4 mb-0">Total da ordem de serviço: R$ {{ number_format($pedido->total, 2, ',', '.') }}</p>
     </div>
 </div>
-
-@if(in_array($pedido->status, ['ABERTO', 'EM_EXECUCAO'], true))
-<div class="mt-4 nao-imprimir">
-    <form method="POST" action="{{ route('pedidos.destroy', $pedido->id) }}" onsubmit="return confirm('Cancelar esta ordem de serviço? As peças com baixa registrada serão devolvidas ao estoque.');">
-        @csrf
-        @method('DELETE')
-
-        <button type="submit" class="btn btn-outline-danger">Cancelar ordem de serviço</button>
-    </form>
-</div>
-@endif
 @endsection

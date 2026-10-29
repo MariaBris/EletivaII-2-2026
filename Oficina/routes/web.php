@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\CategoriaController;
+use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\ProdutoController;
 use App\Http\Controllers\VeiculosController;
 use App\Http\Controllers\ProfileController;
@@ -36,6 +37,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('veiculos', VeiculosController::class);
     Route::get('/pedidos/{id}/imprimir', [PedidoController::class, 'imprimir'])
         ->name('pedidos.imprimir');
+    Route::resource('clientes', ClienteController::class);
     Route::resource('pedidos', PedidoController::class);
 });
 

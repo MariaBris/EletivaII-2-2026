@@ -7,10 +7,6 @@
         <h1 class="h3 mb-1">Olá, {{ auth()->user()->name }}!</h1>
         <p class="text-muted mb-0">Bem-vindo ao painel da Mazotto.</p>
     </div>
-    <form method="POST" action="{{ route('logout') }}">
-        @csrf
-        <button type="submit" class="btn btn-outline-danger"><i class="bi bi-box-arrow-right me-1"></i>Sair</button>
-    </form>
 </div>
 <div class="card border-0 shadow-sm mb-4"><div class="card-body">
     <p class="mb-1"><strong>E-mail:</strong> {{ auth()->user()->email }}</p>

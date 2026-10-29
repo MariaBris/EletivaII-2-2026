@@ -84,6 +84,25 @@
             border-radius: 6px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
+
+        .acoes-os {
+            position: sticky;
+            bottom: 0;
+            background-color: white;
+            padding: 15px;
+            border-top: 1px solid #dee2e6;
+            z-index: 10;
+        }
+
+        .barra-acoes {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background-color: #fff;
+            padding: 15px;
+            border-bottom: 1px solid #dee2e6;
+            border-radius: 6px;
+        }
     </style>
     @stack('estilos')
 </head>

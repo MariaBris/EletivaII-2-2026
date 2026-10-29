@@ -6,17 +6,26 @@
 @php
 $veiculoSelecionado = $veiculos->firstWhere('id', old('veiculo_id'));
 $rotuloVeiculo = fn ($veiculo) => $veiculo->placa . ' — ' . ($veiculo->modelo ?? 'Modelo não informado') . ' — ' . ($veiculo->cliente?->nome ?? 'Sem cliente cadastrado');
+
 $grupos = [
 'produtos' => ['titulo' => 'Peças', 'botao' => 'Adicionar peça', 'itens' => $produtos],
 'servicos' => ['titulo' => 'Serviços e mão de obra', 'botao' => 'Adicionar serviço', 'itens' => $servicos],
 ];
+
 $itensAnteriores = [
 'produtos' => is_array(old('produtos')) ? old('produtos') : [],
 'servicos' => is_array(old('servicos')) ? old('servicos') : [],
 ];
 @endphp
 
-<h1 class="h3 mb-4">Abrir ordem de serviço</h1>
+<div class="barra-acoes d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+    <h1 class="h3 mb-0">Abrir ordem de serviço</h1>
+
+    <div class="d-flex flex-wrap gap-2">
+        <button type="submit" form="formulario-os" class="btn btn-primary" @disabled($veiculos->isEmpty() || ($produtos->isEmpty() && $servicos->isEmpty()))>Abrir ordem de serviço</button>
+        <a href="{{ route('pedidos.index') }}" class="btn btn-secondary">Cancelar</a>
+    </div>
+</div>
 
 @if($errors->any())
 <div class="alert alert-danger" role="alert">
@@ -49,11 +58,13 @@ $itensAnteriores = [
                 <label for="veiculo-busca" class="form-label">Pesquisar veículo</label>
                 <input id="veiculo-busca" name="veiculo_busca" type="text" list="lista-veiculos" value="{{ old('veiculo_busca', $veiculoSelecionado ? $rotuloVeiculo($veiculoSelecionado) : '') }}" class="form-control" autocomplete="off" placeholder="Digite a placa, o modelo ou o nome do cliente" aria-describedby="veiculo-ajuda" required>
                 <input id="veiculo_id" name="veiculo_id" type="hidden" value="{{ $veiculoSelecionado?->id }}">
+
                 <datalist id="lista-veiculos">
                     @foreach($veiculos as $veiculo)
                     <option value="{{ $rotuloVeiculo($veiculo) }}" data-id="{{ $veiculo->id }}" data-placa="{{ $veiculo->placa }}"></option>
                     @endforeach
                 </datalist>
+
                 <p id="veiculo-ajuda" class="form-text mb-0">Digite para encontrar e escolha um veículo sugerido. A ordem de serviço utiliza o cliente vinculado a ele, se houver.</p>
             </div>
 
@@ -105,6 +116,7 @@ $itensAnteriores = [
                                 <th class="text-end">Ação</th>
                             </tr>
                         </thead>
+
                         <tbody data-itens>
                             <tr data-vazio>
                                 <td colspan="5" class="text-center text-muted">Nenhum item adicionado.</td>
@@ -116,12 +128,7 @@ $itensAnteriores = [
             @endforeach
 
             <p class="h5 text-end">Total previsto: <span id="total-previsto" aria-live="polite">R$ 0,00</span></p>
-            <p class="form-text">Ao salvar, o sistema confere os preços e o estoque e desconta as peças utilizadas.</p>
-
-            <div class="d-flex justify-content-end gap-2 mt-4">
-                <a href="{{ route('pedidos.index') }}" class="btn btn-outline-dark">Voltar</a>
-                <button type="submit" class="btn btn-primary" @disabled($veiculos->isEmpty() || ($produtos->isEmpty() && $servicos->isEmpty()))>Abrir ordem de serviço</button>
-            </div>
+            <p class="form-text mb-0">Ao salvar, o sistema confere os preços e o estoque e desconta as peças utilizadas.</p>
         </form>
     </div>
 </div>
@@ -143,6 +150,7 @@ $itensAnteriores = [
 <script id="itens-anteriores-os" type="application/json">
     @json($itensAnteriores)
 </script>
+
 <script>
     (() => {
         const formulario = document.getElementById('formulario-os');
@@ -175,6 +183,7 @@ $itensAnteriores = [
         function conferirVeiculo() {
             const texto = normalizar(busca.value);
             const encontrado = veiculos.find(opcao => normalizar(opcao.value) === texto || normalizar(opcao.dataset.placa) === texto);
+
             veiculoId.value = encontrado ? encontrado.dataset.id : '';
             busca.setCustomValidity(encontrado ? '' : 'Escolha um veículo cadastrado entre as sugestões.');
         }
@@ -191,20 +200,25 @@ $itensAnteriores = [
         function limiteItem(grupo, opcao) {
             const preco = precoEmCentavos(opcao.dataset.preco);
             const limiteEstoque = grupo.tipo === 'produtos' ? Number(opcao.dataset.estoque) : 1000000;
+
             return Math.min(limiteEstoque, 1000000, preco > 0 ? Math.floor(9999999999 / preco) : 1000000);
         }
 
         function atualizarTotais() {
             let total = 0;
+
             for (const grupo of grupos) {
                 grupo.vazio.hidden = grupo.itens.size > 0;
+
                 for (const item of grupo.itens.values()) {
                     const quantidade = Number(item.quantidade.value);
                     const subtotal = Number.isInteger(quantidade) && quantidade > 0 && quantidade <= item.limite ? quantidade * item.preco : 0;
+
                     item.linha.querySelector('[data-subtotal]').textContent = moeda.format(subtotal / 100);
                     total += subtotal;
                 }
             }
+
             document.getElementById('total-previsto').textContent = moeda.format(total / 100);
             return total;
         }
@@ -240,14 +254,18 @@ $itensAnteriores = [
 
             linha.querySelector('[data-nome]').textContent = nome;
             linha.querySelector('[data-preco]').textContent = moeda.format(preco / 100);
+
             identificador.name = `${grupo.tipo}[${indice}][${campo}]`;
             identificador.value = opcao.value;
+
             entrada.id = `${grupo.tipo}-item-${indice}`;
             entrada.name = `${grupo.tipo}[${indice}][quantidade]`;
             entrada.value = quantidade;
             entrada.max = limite;
+
             linha.querySelector('[data-rotulo]').htmlFor = entrada.id;
             linha.querySelector('[data-rotulo]').textContent = `Quantidade de ${nome}`;
+
             entrada.addEventListener('input', atualizarTotais);
 
             linha.querySelector('[data-remover]').addEventListener('click', () => {
@@ -262,6 +280,7 @@ $itensAnteriores = [
                 preco,
                 limite
             });
+
             grupo.corpo.append(linha);
             atualizarTotais();
             return true;
@@ -278,11 +297,13 @@ $itensAnteriores = [
                 itens: new Map(),
                 proximoIndice: 0,
             };
+
             grupos.push(grupo);
 
             grupo.selecao.addEventListener('change', () => {
                 const opcao = grupo.selecao.selectedOptions[0];
                 const selecionado = Boolean(opcao?.value);
+
                 grupo.quantidade.disabled = !selecionado;
                 grupo.botao.disabled = !selecionado;
                 grupo.quantidade.max = selecionado ? limiteItem(grupo, opcao) : 1000000;
@@ -290,9 +311,12 @@ $itensAnteriores = [
 
             grupo.botao.addEventListener('click', () => {
                 limparAviso();
+
                 const opcao = grupo.selecao.selectedOptions[0];
+
                 if (!opcao?.value || !grupo.quantidade.reportValidity()) return;
                 if (!adicionar(grupo, opcao, grupo.quantidade.value)) return;
+
                 grupo.selecao.value = '';
                 grupo.quantidade.value = 1;
                 grupo.quantidade.disabled = true;
@@ -302,8 +326,10 @@ $itensAnteriores = [
 
         for (const grupo of grupos) {
             const campo = grupo.tipo === 'produtos' ? 'produto_id' : 'servico_id';
+
             for (const item of Object.values(anteriores[grupo.tipo] ?? {})) {
                 const opcao = [...grupo.selecao.options].find(opcao => opcao.value && opcao.value === String(item?.[campo]));
+
                 if (opcao) adicionar(grupo, opcao, item.quantidade ?? '', true);
                 else informar('Um item do formulário anterior não está mais disponível. Confira a seleção antes de salvar.');
             }
@@ -311,20 +337,24 @@ $itensAnteriores = [
 
         formulario.addEventListener('submit', evento => {
             conferirVeiculo();
+
             if (!formulario.reportValidity()) {
                 evento.preventDefault();
                 return;
             }
+
             if (grupos.some(grupo => grupo.selecao.value)) {
                 evento.preventDefault();
                 informar('Há um item selecionado que ainda não foi adicionado. Clique em Adicionar peça ou Adicionar serviço.');
                 return;
             }
+
             if (!grupos.some(grupo => grupo.itens.size)) {
                 evento.preventDefault();
                 informar('Adicione pelo menos uma peça ou um serviço para abrir a ordem de serviço.');
                 return;
             }
+
             if (atualizarTotais() > 9999999999) {
                 evento.preventDefault();
                 informar('O total da ordem de serviço ultrapassa o limite permitido. Confira os itens e as quantidades.');

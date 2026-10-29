@@ -3,7 +3,20 @@
 @section('title', 'Consultar veículo - Mazotto')
 
 @section('content')
-<h1 class="h3 mb-4">Veículo {{ $veiculo->placa }}</h1>
+<div class="barra-acoes d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+    <h1 class="h3 mb-0">{{ trim(($veiculo->marca ?? '') . ' ' . ($veiculo->modelo ?? '')) }} — {{ $veiculo->placa }}</h1>
+
+    <div class="d-flex flex-wrap gap-2">
+        <a href="{{ route('veiculos.index') }}" class="btn btn-outline-dark">Voltar</a>
+        <a href="{{ route('veiculos.edit', $veiculo->id) }}" class="btn btn-primary">Editar</a>
+
+        <form method="POST" action="{{ route('veiculos.destroy', $veiculo->id) }}" class="m-0" onsubmit="return confirm('Excluir este veículo?');">
+            @csrf
+            @method('DELETE')
+            <button type="submit" class="btn btn-danger">Excluir</button>
+        </form>
+    </div>
+</div>
 
 {{-- Mensagens de sucesso, bloqueio e validação. --}}
 @if(session('mensagem'))
@@ -45,11 +58,6 @@
             <dt class="col-sm-3">Telefone</dt>
             <dd class="col-sm-9">{{ $veiculo->cliente?->telefone ?? 'Não informado' }}</dd>
         </dl>
-
-        <div class="d-flex justify-content-end flex-wrap gap-2 mt-4">
-            <a href="{{ route('veiculos.index') }}" class="btn btn-outline-dark">Voltar</a>
-            <a href="{{ route('veiculos.edit', $veiculo->id) }}" class="btn btn-primary">Editar</a>
-        </div>
     </div>
 </div>
 @endsection
