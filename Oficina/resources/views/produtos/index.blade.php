@@ -6,7 +6,7 @@
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
     <h1 class="h3 mb-0">Produtos</h1>
 
-    <div class="d-flex gap-2">
+    <div class="d-flex flex-wrap gap-2">
         <a href="{{ route('dashboard') }}" class="btn btn-outline-dark">Voltar ao início</a>
         <a href="{{ route('produtos.create') }}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Novo produto</a>
     </div>
@@ -20,53 +20,94 @@
 <div class="alert alert-danger" role="alert">{{ session('erro') }}</div>
 @endif
 
-<div class="table-responsive">
-    <table class="table table-striped table-hover align-middle bg-white">
-        <thead>
-            <tr>
-                <th style="width: 70px;">Foto</th>
-                <th>Nome</th>
-                <th>Categoria</th>
-                <th>Preço</th>
-                <th>Estoque</th>
-                <th class="col-acoes text-end">Ações</th>
-            </tr>
-        </thead>
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-4">
+        <form id="formulario-pesquisa" method="GET" action="{{ route('produtos.index') }}">
+            <div class="row g-3 align-items-end">
+                <div class="col-12 col-md">
+                    <label for="busca" class="form-label">Pesquisar produto</label>
+                    <input id="busca" name="busca" type="search" class="form-control" value="{{ old('busca', request('busca')) }}" maxlength="255" placeholder="Nome, descrição ou categoria">
+                </div>
 
-        <tbody>
-            @forelse($produtos as $p)
-            <tr>
-                <td>
-                    @if($p->imagem)
-                    <!-- Adicionada a classe img-tabela aqui para forçar o tamanho pequeno e quadrado -->
-                    <img src="{{ Str::startsWith($p->imagem, 'http') ? $p->imagem : asset($p->imagem) }}" alt="Foto de {{ $p->nome }}" class="img-tabela">
-                    @else
-                    <span class="text-muted small">Sem foto</span>
-                    @endif
-                </td>
-                <td>{{ $p->nome }}</td>
-                <td>{{ $p->categoria?->nome ?? 'Sem categoria' }}</td>
-                <td class="text-nowrap">R$ {{ number_format($p->preco, 2, ',', '.') }}</td>
-                <td>{{ $p->estoque }}</td>
-                <td class="col-acoes">
-                    <div class="d-flex justify-content-end flex-wrap gap-2">
-                        <a href="{{ route('produtos.show', $p->id) }}" class="btn btn-sm btn-outline-dark" title="Consultar" aria-label="Consultar produto"><i class="bi bi-eye" aria-hidden="true"></i></a>
-                        <a href="{{ route('produtos.edit', $p->id) }}" class="btn btn-sm btn-primary" title="Editar" aria-label="Editar produto"><i class="bi bi-pencil-square" aria-hidden="true"></i></a>
-
-                        <form method="POST" action="{{ route('produtos.destroy', $p->id) }}" class="m-0" onsubmit="return confirm('Deseja excluir este produto?');">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="btn btn-sm btn-danger" title="Excluir" aria-label="Excluir produto"><i class="bi bi-trash" aria-hidden="true"></i></button>
-                        </form>
-                    </div>
-                </td>
-            </tr>
-            @empty
-            <tr>
-                <td colspan="6" class="text-center text-muted py-4">Nenhum produto cadastrado.</td>
-            </tr>
-            @endforelse
-        </tbody>
-    </table>
+                <div class="col-12 col-md-auto d-flex flex-wrap gap-2">
+                    <button type="submit" class="btn btn-primary">Pesquisar</button>
+                    <a href="{{ route('produtos.index') }}" class="btn btn-secondary" data-limpar-pesquisa>Limpar</a>
+                </div>
+            </div>
+        </form>
+    </div>
 </div>
+
+<div id="resultados-pesquisa" aria-busy="false">
+    @if($errors->any())
+    <div class="alert alert-danger" role="alert">
+        <ul class="mb-0">
+            @foreach($errors->all() as $mensagem)
+            <li>{{ $mensagem }}</li>
+            @endforeach
+        </ul>
+    </div>
+    @endif
+
+    <p class="text-muted mb-3" role="status">{{ $produtos->total() }} produto(s) encontrado(s).</p>
+
+    <div class="table-responsive">
+        <table class="table table-striped table-hover align-middle bg-white">
+            <thead>
+                <tr>
+                    <th style="width: 70px;">Foto</th>
+                    <th>Nome</th>
+                    <th>Categoria</th>
+                    <th>Preço</th>
+                    <th>Estoque</th>
+                    <th class="col-acoes text-end">Ações</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                @forelse($produtos as $p)
+                <tr>
+                    <td>
+                        @if($p->imagem)
+                        <!-- Adicionada a classe img-tabela aqui para forçar o tamanho pequeno e quadrado -->
+                        <img src="{{ Str::startsWith($p->imagem, 'http') ? $p->imagem : asset($p->imagem) }}" alt="Foto de {{ $p->nome }}" class="img-tabela">
+                        @else
+                        <span class="text-muted small">Sem foto</span>
+                        @endif
+                    </td>
+                    <td>{{ $p->nome }}</td>
+                    <td>{{ $p->categoria?->nome ?? 'Sem categoria' }}</td>
+                    <td class="text-nowrap">R$ {{ number_format($p->preco, 2, ',', '.') }}</td>
+                    <td>{{ $p->estoque }}</td>
+
+                    <td class="col-acoes">
+                        <div class="d-flex justify-content-end flex-wrap gap-2">
+                            <a href="{{ route('produtos.show', $p->id) }}" class="btn btn-sm btn-outline-dark" title="Consultar" aria-label="Consultar produto"><i class="bi bi-eye" aria-hidden="true"></i></a>
+                            <a href="{{ route('produtos.edit', $p->id) }}" class="btn btn-sm btn-primary" title="Editar" aria-label="Editar produto"><i class="bi bi-pencil-square" aria-hidden="true"></i></a>
+
+                            <form method="POST" action="{{ route('produtos.destroy', $p->id) }}" class="m-0" onsubmit="return confirm('Deseja excluir este produto?');">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="btn btn-sm btn-danger" title="Excluir" aria-label="Excluir produto"><i class="bi bi-trash" aria-hidden="true"></i></button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                @empty
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-4">Nenhum produto encontrado para esta consulta.</td>
+                </tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
+
+    @if($produtos->hasPages())
+    <div class="mt-4">
+        {{ $produtos->onEachSide(1)->links('pagination::bootstrap-5') }}
+    </div>
+    @endif
+</div>
+
+@include('partials.pesquisa-dinamica')
 @endsection

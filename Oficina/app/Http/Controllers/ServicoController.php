@@ -5,15 +5,47 @@ namespace App\Http\Controllers;
 use App\Models\Servico;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 class ServicoController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $servicos = Servico::all();
+        $validacao = Validator::make($request->query(), [
+            'busca' => ['nullable', 'string', 'max:255'],
+            'page' => ['nullable', 'integer', 'min:1'],
+        ], [
+            'busca.string' => 'Informe um texto para pesquisar.',
+            'busca.max' => 'A pesquisa deve ter até 255 caracteres.',
+            'page.integer' => 'A página deve ser um número inteiro.',
+            'page.min' => 'A página deve ser maior que zero.',
+        ]);
+
+        if ($validacao->fails()) {
+            return redirect()->route('servicos.index')
+                ->withErrors($validacao)
+                ->withInput($request->except('page'));
+        }
+
+        $dados = $validacao->validated();
+        $busca = trim($dados['busca'] ?? '');
+
+        $consulta = Servico::query();
+
+        if ($busca !== '') {
+            $consulta->where(function ($consultaBusca) use ($busca) {
+                $consultaBusca->where('nome', 'like', '%' . $busca . '%')
+                    ->orWhere('descricao', 'like', '%' . $busca . '%');
+            });
+        }
+
+        $servicos = $consulta->orderBy('nome')
+            ->orderBy('id')
+            ->paginate(15)
+            ->withQueryString();
 
         return view('servicos.index', compact('servicos'));
     }

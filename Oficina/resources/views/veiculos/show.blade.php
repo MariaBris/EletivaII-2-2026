@@ -6,8 +6,10 @@
 <div class="barra-acoes d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
     <h1 class="h3 mb-0">{{ trim(($veiculo->marca ?? '') . ' ' . ($veiculo->modelo ?? '')) }} — {{ $veiculo->placa }}</h1>
 
-    <div class="d-flex flex-wrap gap-2">
+        <div class="d-flex flex-wrap gap-2">
         <a href="{{ route('veiculos.index') }}" class="btn btn-outline-dark">Voltar</a>
+        <a href="{{ route('pedidos.index', ['veiculo_id' => $veiculo->id]) }}" class="btn btn-outline-dark">Histórico de OS</a>
+        <a href="{{ route('pedidos.create', ['veiculo_id' => $veiculo->id]) }}" class="btn btn-primary">Abrir OS</a>
         <a href="{{ route('veiculos.edit', $veiculo->id) }}" class="btn btn-primary">Editar</a>
 
         <form method="POST" action="{{ route('veiculos.destroy', $veiculo->id) }}" class="m-0" onsubmit="return confirm('Excluir este veículo?');">

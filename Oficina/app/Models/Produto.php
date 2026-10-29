@@ -6,15 +6,28 @@ use Illuminate\Database\Eloquent\Model;
 
 class Produto extends Model
 {
-    protected $table = "produtos";
+    protected $table = 'produtos';
+
     public $incrementing = true;
+
     protected $fillable = [
-        'nome', 'descricao', 'preco', 'estoque', 'categoria_id', 'imagem'
+        'nome',
+        'descricao',
+        'preco',
+        'estoque',
+        'estoque_minimo',
+        'categoria_id',
+        'imagem',
     ];
+
     protected $casts = [
-        'preco' => 'decimal:2', 'estoque' => 'integer'
+        'preco' => 'decimal:2',
+        'estoque' => 'integer',
+        'estoque_minimo' => 'integer',
     ];
-    public function categoria(){
+
+    public function categoria()
+    {
         return $this->belongsTo(Categoria::class, 'categoria_id');
     }
 }

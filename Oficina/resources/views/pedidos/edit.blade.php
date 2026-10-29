@@ -5,21 +5,17 @@
 @section('content')
 @php
 $andamentos = [
-    'ABERTO' => 'Aberto',
-    'EM_EXECUCAO' => 'Em execução',
-    'PAGO' => 'Pago',
-    'ENVIADO' => 'Enviado',
-    'CONCLUIDO' => 'Concluído',
-    'CANCELADO' => 'Cancelado',
+'ABERTO' => 'Aberto',
+'EM_EXECUCAO' => 'Em execução',
+'CONCLUIDO' => 'Concluído',
+'CANCELADO' => 'Cancelado',
 ];
 
 $opcoesPorStatus = [
-    'ABERTO' => ['ABERTO', 'EM_EXECUCAO', 'CONCLUIDO', 'CANCELADO'],
-    'EM_EXECUCAO' => ['EM_EXECUCAO', 'CONCLUIDO', 'CANCELADO'],
-    'ENVIADO' => ['ENVIADO', 'EM_EXECUCAO', 'CONCLUIDO', 'CANCELADO'],
-    'PAGO' => ['PAGO'],
-    'CONCLUIDO' => ['CONCLUIDO'],
-    'CANCELADO' => ['CANCELADO'],
+'ABERTO' => ['ABERTO', 'EM_EXECUCAO', 'CONCLUIDO', 'CANCELADO'],
+'EM_EXECUCAO' => ['EM_EXECUCAO', 'CONCLUIDO', 'CANCELADO'],
+'CONCLUIDO' => ['CONCLUIDO'],
+'CANCELADO' => ['CANCELADO'],
 ];
 
 $opcoes = $opcoesPorStatus[$pedido->status] ?? [$pedido->status];
@@ -54,10 +50,6 @@ $opcoes = $opcoesPorStatus[$pedido->status] ?? [$pedido->status];
 
 @if(in_array($pedido->status, ['CONCLUIDO', 'CANCELADO'], true))
 <div class="alert alert-info">O andamento desta ordem de serviço está encerrado. Você pode atualizar o responsável e as observações.</div>
-@endif
-
-@if($pedido->status === 'PAGO')
-<div class="alert alert-warning">Esta ordem de serviço utiliza o status antigo PAGO. A mudança de andamento será liberada depois de adaptarmos o registro de recebimentos.</div>
 @endif
 
 <div class="card border-0 shadow-sm mb-4">

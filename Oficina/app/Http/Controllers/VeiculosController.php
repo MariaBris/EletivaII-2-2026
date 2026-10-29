@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Validator;
 
 class VeiculosController extends Controller
 {
@@ -19,13 +20,52 @@ class VeiculosController extends Controller
     {
         $this->autorizarAcesso($request);
 
-        $veiculos = Veiculos::with('cliente')
-            ->orderBy('placa')
-            ->get();
+        $validacao = Validator::make($request->query(), [
+            'busca' => ['nullable', 'string', 'max:255'],
+            'page' => ['nullable', 'integer', 'min:1'],
+        ], [
+            'busca.string' => 'Informe um texto para pesquisar.',
+            'busca.max' => 'A pesquisa deve ter até 255 caracteres.',
+            'page.integer' => 'A página deve ser um número inteiro.',
+            'page.min' => 'A página deve ser maior que zero.',
+        ]);
+
+        if ($validacao->fails()) {
+            return redirect()->route('veiculos.index')
+                ->withErrors($validacao)
+                ->withInput($request->except('page'));
+        }
+
+        $dados = $validacao->validated();
+        $busca = trim($dados['busca'] ?? '');
+
+        $consulta = Veiculos::with('cliente');
+
+        if ($busca !== '') {
+            $placaBusca = strtoupper(
+                str_replace(['-', ' '], '', $busca)
+            );
+
+            $consulta->where(function ($consultaBusca) use ($busca, $placaBusca) {
+                $consultaBusca->where('marca', 'like', '%' . $busca . '%')
+                    ->orWhere('modelo', 'like', '%' . $busca . '%')
+                    ->orWhereHas('cliente', function ($clientes) use ($busca) {
+                        $clientes->where('nome', 'like', '%' . $busca . '%');
+                    });
+
+                if ($placaBusca !== '') {
+                    $consultaBusca->orWhere('placa', 'like', '%' . $placaBusca . '%');
+                }
+            });
+        }
+
+        $veiculos = $consulta->orderBy('placa')
+            ->orderBy('id')
+            ->paginate(15)
+            ->withQueryString();
 
         return view('veiculos.index', compact('veiculos'));
     }
-
     /**
      * Show the form for creating a new resource.
      */
@@ -48,7 +88,14 @@ class VeiculosController extends Controller
         $dados = $this->validar($request);
         $dados['user_id'] = null;
 
-        Veiculos::create($dados);
+        $veiculo = Veiculos::create($dados);
+
+        if ($request->input('origem') === 'os') {
+            return redirect()->route('pedidos.create', [
+                'veiculo_id' => $veiculo->id,
+                'retomar' => 1,
+            ])->with('mensagem', 'Veículo cadastrado! Continue preenchendo a ordem de serviço.');
+        }
 
         return redirect()->route('veiculos.index')
             ->with('mensagem', 'Veículo cadastrado com sucesso!');

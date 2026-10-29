@@ -4,7 +4,7 @@
 
 @section('content')
 @php
-$veiculoSelecionado = $veiculos->firstWhere('id', old('veiculo_id'));
+$veiculoSelecionado = $veiculos->firstWhere('id', old('veiculo_id', request()->query('veiculo_id')));
 $rotuloVeiculo = fn ($veiculo) => $veiculo->placa . ' — ' . ($veiculo->modelo ?? 'Modelo não informado') . ' — ' . ($veiculo->cliente?->nome ?? 'Sem cliente cadastrado');
 
 $grupos = [
@@ -27,6 +27,10 @@ $itensAnteriores = [
     </div>
 </div>
 
+@if(session('mensagem'))
+<div class="alert alert-success" role="status">{{ session('mensagem') }}</div>
+@endif
+
 @if($errors->any())
 <div class="alert alert-danger" role="alert">
     <ul class="mb-0">
@@ -46,7 +50,7 @@ $itensAnteriores = [
 @endif
 
 <div class="mb-4">
-    <a href="{{ route('veiculos.create') }}" class="btn btn-outline-dark">Cadastrar veículo</a>
+    <a id="cadastrar-veiculo-os" href="{{ route('veiculos.create', ['origem' => 'os']) }}" class="btn btn-outline-dark">Cadastrar veículo</a>
 </div>
 
 <div class="card border-0 shadow-sm">
@@ -167,6 +171,46 @@ $itensAnteriores = [
         const veiculoId = document.getElementById('veiculo_id');
         const veiculos = [...document.querySelectorAll('#lista-veiculos option')];
         const anteriores = JSON.parse(document.getElementById('itens-anteriores-os').textContent);
+        const chaveRascunho = 'mazotto.os.rascunho.{{ auth()->id() }}';
+        const parametros = new URLSearchParams(window.location.search);
+        let rascunho = null;
+
+        if (parametros.get('retomar') === '1') {
+            try {
+                const salvo = sessionStorage.getItem(chaveRascunho);
+
+                if (salvo) {
+                    rascunho = JSON.parse(salvo);
+                }
+            } catch (erro) {
+                informar('Não foi possível recuperar o preenchimento anterior. Confira os campos antes de salvar.');
+            }
+        }
+
+        if (rascunho) {
+            anteriores.produtos = [];
+            anteriores.servicos = [];
+
+            for (const [nome, valor] of rascunho.campos) {
+                if (['responsavel', 'observacoes'].includes(nome)) {
+                    formulario.elements.namedItem(nome).value = valor;
+                }
+
+                if (!parametros.get('veiculo_id')) {
+                    if (nome === 'veiculo_busca') busca.value = valor;
+                    if (nome === 'veiculo_id') veiculoId.value = valor;
+                }
+
+                const item = nome.match(/^(produtos|servicos)\[(\d+)\]\[(produto_id|servico_id|quantidade)\]$/);
+
+                if (item) {
+                    const [, tipo, indice, campo] = item;
+
+                    anteriores[tipo][indice] ??= {};
+                    anteriores[tipo][indice][campo] = valor;
+                }
+            }
+        }
         const normalizar = texto => texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
 
         function informar(texto) {
@@ -358,6 +402,51 @@ $itensAnteriores = [
             if (atualizarTotais() > 9999999999) {
                 evento.preventDefault();
                 informar('O total da ordem de serviço ultrapassa o limite permitido. Confira os itens e as quantidades.');
+            }
+        });
+        if (rascunho) {
+            for (const grupo of grupos) {
+                const pendente = rascunho.selecoes?.[grupo.tipo];
+
+                if (!pendente) continue;
+
+                grupo.selecao.value = pendente.id;
+                grupo.selecao.dispatchEvent(new Event('change'));
+                grupo.quantidade.value = pendente.quantidade;
+            }
+
+            try {
+                sessionStorage.removeItem(chaveRascunho);
+            } catch (erro) {
+                // O formulário recuperado continua disponível na tela.
+            }
+        }
+
+        document.getElementById('cadastrar-veiculo-os').addEventListener('click', evento => {
+            const selecoes = {};
+
+            for (const grupo of grupos) {
+                selecoes[grupo.tipo] = {
+                    id: grupo.selecao.value,
+                    quantidade: grupo.quantidade.value,
+                };
+            }
+
+            const dadosRascunho = {
+                campos: [...new FormData(formulario).entries()]
+                    .filter(([nome]) => nome !== '_token'),
+                selecoes,
+            };
+
+            try {
+                sessionStorage.setItem(
+                    chaveRascunho,
+                    JSON.stringify(dadosRascunho)
+                );
+            } catch (erro) {
+                evento.preventDefault();
+
+                informar('Não foi possível guardar o preenchimento para cadastrar o veículo. Permaneça nesta tela para não perder os dados.');
             }
         });
     })();

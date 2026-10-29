@@ -1,6 +1,6 @@
 <nav class="navbar navbar-expand-lg navbar-custom shadow-sm" data-bs-theme="dark">
     <div class="container-fluid">
-        <a class="navbar-brand d-flex align-items-center gap-2" href="{{ url('/') }}">
+        <a class="navbar-brand d-flex align-items-center gap-2" href="{{ route('dashboard') }}">
             <img src="{{ asset('img/logo_mazotto.jpg') }}" alt="Logo Mazotto" height="45" style="border-radius: 4px;">
             <strong>Mazotto</strong>
         </a>

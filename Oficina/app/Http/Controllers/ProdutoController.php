@@ -7,15 +7,50 @@ use App\Models\Categoria;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Validator;
 
 class ProdutoController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $produtos = Produto::with('categoria')->get(); // Busca todos os produtos registados no banco de dados com suas categorias
+        $validacao = Validator::make($request->query(), [
+            'busca' => ['nullable', 'string', 'max:255'],
+            'page' => ['nullable', 'integer', 'min:1'],
+        ], [
+            'busca.string' => 'Informe um texto para pesquisar.',
+            'busca.max' => 'A pesquisa deve ter até 255 caracteres.',
+            'page.integer' => 'A página deve ser um número inteiro.',
+            'page.min' => 'A página deve ser maior que zero.',
+        ]);
+
+        if ($validacao->fails()) {
+            return redirect()->route('produtos.index')
+                ->withErrors($validacao)
+                ->withInput($request->except('page'));
+        }
+
+        $dados = $validacao->validated();
+        $busca = trim($dados['busca'] ?? '');
+
+        $consulta = Produto::with('categoria'); // Prepara a consulta dos produtos com suas categorias
+
+        if ($busca !== '') {
+            $consulta->where(function ($consultaBusca) use ($busca) {
+                $consultaBusca->where('nome', 'like', '%' . $busca . '%')
+                    ->orWhere('descricao', 'like', '%' . $busca . '%')
+                    ->orWhereHas('categoria', function ($categorias) use ($busca) {
+                        $categorias->where('nome', 'like', '%' . $busca . '%');
+                    });
+            });
+        }
+
+        $produtos = $consulta->orderBy('nome')
+            ->orderBy('id')
+            ->paginate(15)
+            ->withQueryString();
 
         return view('produtos.index', compact('produtos')); // Retorna a view de listagem enviando a variável com os produtos
     }
@@ -137,6 +172,12 @@ class ProdutoController extends Controller
                 'min:0',
                 'max:2147483647',
             ],
+            'estoque_minimo' => [
+                'required',
+                'integer',
+                'min:0',
+                'max:2147483647',
+            ],
             'imagem_arquivo' => [
                 'nullable',
                 'image',
@@ -170,6 +211,11 @@ class ProdutoController extends Controller
             'estoque.integer' => 'O estoque deve ser um número inteiro.',
             'estoque.min' => 'O estoque não pode ser negativo.',
             'estoque.max' => 'A quantidade em estoque ultrapassa o limite permitido.',
+
+            'estoque_minimo.required' => 'Informe o estoque mínimo.',
+            'estoque_minimo.integer' => 'O estoque mínimo deve ser um número inteiro.',
+            'estoque_minimo.min' => 'O estoque mínimo não pode ser negativo.',
+            'estoque_minimo.max' => 'O estoque mínimo ultrapassa o limite permitido.',
 
             'imagem_arquivo.uploaded' => 'Não foi possível enviar a imagem. Confira o tamanho do arquivo.',
             'imagem_arquivo.image' => 'Selecione um arquivo de imagem válido.',

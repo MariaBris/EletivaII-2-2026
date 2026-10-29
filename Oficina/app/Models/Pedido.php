@@ -9,11 +9,20 @@ class Pedido extends Model
     protected $table = 'pedidos';
 
     protected $fillable = [
-        'status', 'total', 'user_id', 'cliente_id', 'usuario_id', 'veiculo_id', 'responsavel', 'observacoes', 'estoque_baixado'
+        'status',
+        'total',
+        'user_id',
+        'cliente_id',
+        'usuario_id',
+        'veiculo_id',
+        'responsavel',
+        'observacoes',
+        'estoque_baixado'
     ];
 
     protected $casts = [
-        'total' => 'decimal:2', 'estoque_baixado' => 'boolean'
+        'total' => 'decimal:2',
+        'estoque_baixado' => 'boolean'
     ];
 
     public function cliente()
@@ -44,5 +53,10 @@ class Pedido extends Model
     public function servicos()
     {
         return $this->hasMany(ItemServico::class, 'pedido_id');
+    }
+
+    public function recebimentos()
+    {
+        return $this->hasMany(Recebimento::class, 'pedido_id');
     }
 }

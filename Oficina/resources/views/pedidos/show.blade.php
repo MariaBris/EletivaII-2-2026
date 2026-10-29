@@ -11,8 +11,6 @@
 $andamentos = [
 'ABERTO' => 'Aberto',
 'EM_EXECUCAO' => 'Em execução',
-'PAGO' => 'Pago',
-'ENVIADO' => 'Enviado',
 'CONCLUIDO' => 'Concluído',
 'CANCELADO' => 'Cancelado',
 ];
@@ -38,6 +36,18 @@ $andamentos = [
 
 @if(session('mensagem'))
 <div class="alert alert-success nao-imprimir" role="status">{{ session('mensagem') }}</div>
+@endif
+
+@if(session('alertas_estoque'))
+<div class="alert alert-warning nao-imprimir" role="alert">
+    <p class="fw-bold mb-2">Atenção à reposição das peças utilizadas:</p>
+
+    <ul class="mb-0">
+        @foreach(session('alertas_estoque') as $alerta)
+        <li>{{ $alerta['nome'] }} — Estoque atual: {{ $alerta['estoque'] }}; mínimo: {{ $alerta['estoque_minimo'] }}.@if($alerta['estoque'] <= 0) Sem estoque disponível.@endif</li>
+                @endforeach
+    </ul>
+</div>
 @endif
 
 @if(session('erro'))

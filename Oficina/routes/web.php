@@ -8,6 +8,8 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ServicoController;
 use App\Http\Controllers\PedidoController;
 use App\Http\Middleware\VerificarAdministrador;
+use App\Models\Produto;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -15,7 +17,21 @@ Route::get('/', function () {
 });
 
 Route::get('/dashboard', function () {
-    return view('dashboard');
+    $produtosEstoqueBaixo = null;
+
+    if (in_array(Auth::user()->role, ['ADM', 'FUNC'], true)) {
+        $produtosEstoqueBaixo = Produto::whereColumn(
+            'estoque',
+            '<=',
+            'estoque_minimo'
+        )->orderBy('estoque')
+            ->orderBy('nome')
+            ->orderBy('id')
+            ->paginate(10, ['*'], 'estoque_page')
+            ->withQueryString();
+    }
+
+    return view('dashboard', compact('produtosEstoqueBaixo'));
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
@@ -35,8 +51,10 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::resource('veiculos', VeiculosController::class);
+
     Route::get('/pedidos/{id}/imprimir', [PedidoController::class, 'imprimir'])
         ->name('pedidos.imprimir');
+
     Route::resource('clientes', ClienteController::class);
     Route::resource('pedidos', PedidoController::class);
 });

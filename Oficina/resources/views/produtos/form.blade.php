@@ -54,8 +54,14 @@
             </div>
 
             <div class="col-md-6 mb-3">
-                <label for="estoque" class="form-label">Estoque</label>
-                <input type="number" step="1" min="0" id="estoque" name="estoque" class="form-control" value="{{ old('estoque', $produto->estoque ?? '') }}" required>
+                <label for="estoque" class="form-label">Estoque atual</label>
+                <input type="number" step="1" min="0" max="2147483647" id="estoque" name="estoque" class="form-control" value="{{ old('estoque', $produto->estoque ?? '') }}" required>
+            </div>
+
+            <div class="col-md-6 mb-3">
+                <label for="estoque_minimo" class="form-label">Estoque mínimo</label>
+                <input type="number" step="1" min="0" max="2147483647" id="estoque_minimo" name="estoque_minimo" class="form-control" value="{{ old('estoque_minimo', $produto->estoque_minimo ?? 0) }}" aria-describedby="estoque-minimo-ajuda" required>
+                <div id="estoque-minimo-ajuda" class="form-text">O aviso de reposição considera o estoque atual igual ou abaixo deste valor.</div>
             </div>
         </div>
     </div>

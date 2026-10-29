@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Cliente;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 class ClienteController extends Controller
 {
@@ -15,7 +16,39 @@ class ClienteController extends Controller
     {
         $this->autorizarAcesso($request);
 
-        $clientes = Cliente::orderBy('nome')->get();
+        $validacao = Validator::make($request->query(), [
+            'busca' => ['nullable', 'string', 'max:255'],
+            'page' => ['nullable', 'integer', 'min:1'],
+        ], [
+            'busca.string' => 'Informe um texto para pesquisar.',
+            'busca.max' => 'A pesquisa deve ter até 255 caracteres.',
+            'page.integer' => 'A página deve ser um número inteiro.',
+            'page.min' => 'A página deve ser maior que zero.',
+        ]);
+
+        if ($validacao->fails()) {
+            return redirect()->route('clientes.index')
+                ->withErrors($validacao)
+                ->withInput($request->except('page'));
+        }
+
+        $dados = $validacao->validated();
+        $busca = trim($dados['busca'] ?? '');
+
+        $consulta = Cliente::query();
+
+        if ($busca !== '') {
+            $consulta->where(function ($consultaBusca) use ($busca) {
+                $consultaBusca->where('nome', 'like', '%' . $busca . '%')
+                    ->orWhere('telefone', 'like', '%' . $busca . '%')
+                    ->orWhere('email', 'like', '%' . $busca . '%');
+            });
+        }
+
+        $clientes = $consulta->orderBy('nome')
+            ->orderBy('id')
+            ->paginate(15)
+            ->withQueryString();
 
         return view('clientes.index', compact('clientes'));
     }

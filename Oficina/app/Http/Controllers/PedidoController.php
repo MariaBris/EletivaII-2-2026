@@ -8,6 +8,7 @@ use App\Models\Servico;
 use App\Models\Veiculos;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
 class PedidoController extends Controller
@@ -19,13 +20,112 @@ class PedidoController extends Controller
     {
         $this->autorizarAcesso($request);
 
-        $pedidos = Pedido::with([
+        $regras = [
+            'veiculo_id' => ['nullable', 'integer', 'exists:veiculos,id'],
+            'busca' => ['nullable', 'string', 'max:255'],
+            'status' => [
+                'nullable',
+                'string',
+                'in:ABERTO,EM_EXECUCAO,CONCLUIDO,CANCELADO',
+            ],
+            'data_inicio' => ['nullable', 'date_format:Y-m-d'],
+            'data_fim' => ['nullable', 'date_format:Y-m-d'],
+            'page' => ['nullable', 'integer', 'min:1'],
+        ];
+
+        if ($request->filled('data_inicio')) {
+            $regras['data_fim'][] = 'after_or_equal:data_inicio';
+        }
+
+        $validacao = Validator::make($request->query(), $regras, [
+            'veiculo_id.integer' => 'Selecione um veículo válido.',
+            'veiculo_id.exists' => 'O veículo informado não foi encontrado.',
+            'busca.string' => 'Informe um texto para pesquisar.',
+            'busca.max' => 'A pesquisa deve ter até 255 caracteres.',
+            'status.string' => 'Selecione um andamento válido.',
+            'status.in' => 'Selecione um andamento válido.',
+            'data_inicio.date_format' => 'Informe uma data inicial válida.',
+            'data_fim.date_format' => 'Informe uma data final válida.',
+            'data_fim.after_or_equal' => 'A data final deve ser igual ou posterior à data inicial.',
+            'page.integer' => 'A página deve ser um número inteiro.',
+            'page.min' => 'A página deve ser maior que zero.',
+        ]);
+
+        if ($validacao->fails()) {
+            $parametros = [];
+
+            if (
+                !$validacao->errors()->has('veiculo_id')
+                && $request->filled('veiculo_id')
+            ) {
+                $parametros['veiculo_id'] = $request->query('veiculo_id');
+            }
+
+            return redirect()->route('pedidos.index', $parametros)
+                ->withErrors($validacao)
+                ->withInput($request->except('page'));
+        }
+
+        $dados = $validacao->validated();
+
+        $consulta = Pedido::with([
             'cliente',
             'veiculo',
-            'operador'
-        ])->orderByDesc('id')->get();
+            'operador',
+        ]);
 
-        return view('pedidos.index', compact('pedidos'));
+        $veiculoFiltrado = null;
+
+        if (!empty($dados['veiculo_id'])) {
+            $veiculoFiltrado = Veiculos::findOrFail($dados['veiculo_id']);
+
+            $consulta->where('veiculo_id', $veiculoFiltrado->id);
+        }
+
+        $busca = trim($dados['busca'] ?? '');
+
+        if ($busca !== '') {
+            $numero = trim(ltrim($busca, '#'));
+
+            $numeroOs = filter_var($numero, FILTER_VALIDATE_INT, [
+                'options' => ['min_range' => 1],
+            ]);
+
+            $consulta->where(function ($consultaBusca) use ($busca, $numeroOs) {
+                $consultaBusca->whereHas('cliente', function ($clientes) use ($busca) {
+                    $clientes->where('nome', 'like', '%' . $busca . '%');
+                });
+
+                $consultaBusca->orWhereHas('veiculo', function ($veiculos) use ($busca) {
+                    $veiculos->where('placa', 'like', '%' . $busca . '%');
+                });
+
+                if ($numeroOs !== false) {
+                    $consultaBusca->orWhere('pedidos.id', $numeroOs);
+                }
+            });
+        }
+
+        if (!empty($dados['status'])) {
+            $consulta->where('status', $dados['status']);
+        }
+
+        if (!empty($dados['data_inicio'])) {
+            $consulta->whereDate('created_at', '>=', $dados['data_inicio']);
+        }
+
+        if (!empty($dados['data_fim'])) {
+            $consulta->whereDate('created_at', '<=', $dados['data_fim']);
+        }
+
+        $pedidos = $consulta->orderByDesc('id')
+            ->paginate(15)
+            ->withQueryString();
+
+        return view('pedidos.index', compact(
+            'pedidos',
+            'veiculoFiltrado'
+        ));
     }
 
     /**
@@ -145,8 +245,17 @@ class PedidoController extends Controller
             return $pedido;
         }, 3);
 
+        $alertasEstoque = Produto::whereIn(
+            'id',
+            array_column($dados['produtos'], 'produto_id')
+        )->whereColumn('estoque', '<=', 'estoque_minimo')
+            ->orderBy('nome')
+            ->get(['nome', 'estoque', 'estoque_minimo'])
+            ->toArray();
+
         return redirect()->route('pedidos.show', $pedido->id)
-            ->with('mensagem', 'Ordem de serviço cadastrada com sucesso!');
+            ->with('mensagem', 'Ordem de serviço cadastrada com sucesso!')
+            ->with('alertas_estoque', $alertasEstoque);
     }
 
     /**
@@ -192,14 +301,18 @@ class PedidoController extends Controller
         $dados = $request->validate([
             'status' => [
                 'required',
-                'in:ABERTO,EM_EXECUCAO,PAGO,ENVIADO,CONCLUIDO,CANCELADO',
+                'string',
+                'in:ABERTO,EM_EXECUCAO,CONCLUIDO,CANCELADO',
             ],
             'responsavel' => ['nullable', 'string', 'max:255'],
             'observacoes' => ['nullable', 'string', 'max:5000'],
         ], [
             'status.required' => 'Selecione o andamento da OS.',
+            'status.string' => 'Selecione um andamento válido.',
             'status.in' => 'Selecione um andamento válido.',
+            'responsavel.string' => 'O responsável deve ser um texto.',
             'responsavel.max' => 'O responsável deve ter até 255 caracteres.',
+            'observacoes.string' => 'As observações devem ser um texto.',
             'observacoes.max' => 'As observações devem ter até 5000 caracteres.',
         ]);
 
@@ -338,24 +451,6 @@ class PedidoController extends Controller
             $novoStatus = $dados['status'];
 
             if (
-                in_array($novoStatus, ['PAGO', 'ENVIADO'], true)
-                && $novoStatus !== $statusAtual
-            ) {
-                throw ValidationException::withMessages([
-                    'status' => 'PAGO e ENVIADO são situações antigas. Use os novos andamentos da ordem de serviço.',
-                ]);
-            }
-
-            if (
-                $statusAtual === 'PAGO'
-                && $novoStatus !== $statusAtual
-            ) {
-                throw ValidationException::withMessages([
-                    'status' => 'Esta ordem de serviço possui o status antigo PAGO. Precisamos adaptar seu recebimento antes de mudar o andamento.',
-                ]);
-            }
-
-            if (
                 in_array($statusAtual, ['CONCLUIDO', 'CANCELADO'], true)
                 && $novoStatus !== $statusAtual
             ) {
@@ -365,7 +460,7 @@ class PedidoController extends Controller
             }
 
             if (
-                in_array($statusAtual, ['EM_EXECUCAO', 'ENVIADO'], true)
+                $statusAtual === 'EM_EXECUCAO'
                 && $novoStatus === 'ABERTO'
             ) {
                 throw ValidationException::withMessages([
