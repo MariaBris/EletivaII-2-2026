@@ -68,9 +68,9 @@
                 @forelse($veiculos as $veiculo)
                 <tr>
                     <td>{{ $veiculo->placa }}</td>
-                    <td>{{ $veiculo->marca ?? '—' }}</td>
-                    <td>{{ $veiculo->modelo ?? '—' }}</td>
-                    <td>{{ $veiculo->ano ?? '—' }}</td>
+                    <td>{{ $veiculo->marca ?? '-' }}</td>
+                    <td>{{ $veiculo->modelo ?? '-' }}</td>
+                    <td>{{ $veiculo->ano ?? '-' }}</td>
                     <td>{{ $veiculo->cliente?->nome ?? 'Sem cliente cadastrado' }}</td>
 
                     <td class="col-acoes">

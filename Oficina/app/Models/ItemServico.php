@@ -9,12 +9,20 @@ class ItemServico extends Model
     protected $table = 'itens_servico';
 
     protected $fillable = [
-        'quantidade', 'preco', 'pedido_id', 'servico_id',
+        'quantidade',
+        'preco',
+        'pedido_id',
+        'servico_id',
+        'situacao',
+        'cancelado_em',
+        'cancelado_por',
+        'motivo_cancelamento',
     ];
 
     protected $casts = [
         'quantidade' => 'integer',
         'preco' => 'decimal:2',
+        'cancelado_em' => 'datetime',
     ];
 
     public function pedido()
@@ -25,5 +33,10 @@ class ItemServico extends Model
     public function servico()
     {
         return $this->belongsTo(Servico::class, 'servico_id');
+    }
+
+    public function canceladoPor()
+    {
+        return $this->belongsTo(User::class, 'cancelado_por');
     }
 }

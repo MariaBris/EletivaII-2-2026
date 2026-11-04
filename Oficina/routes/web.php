@@ -7,6 +7,7 @@ use App\Http\Controllers\VeiculosController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ServicoController;
 use App\Http\Controllers\PedidoController;
+use App\Http\Controllers\ChecklistController;
 use App\Http\Middleware\VerificarAdministrador;
 use App\Models\Produto;
 use Illuminate\Support\Facades\Auth;
@@ -48,14 +49,35 @@ Route::middleware('auth')->group(function () {
         Route::resource('categorias', CategoriaController::class);
         Route::resource('produtos', ProdutoController::class);
         Route::resource('servicos', ServicoController::class);
+
+        Route::get('/checklist/modelo', [ChecklistController::class, 'modelo'])
+            ->name('checklist.modelo');
     });
 
     Route::resource('veiculos', VeiculosController::class);
+    Route::resource('clientes', ClienteController::class);
 
     Route::get('/pedidos/{id}/imprimir', [PedidoController::class, 'imprimir'])
+        ->whereNumber('id')
         ->name('pedidos.imprimir');
 
-    Route::resource('clientes', ClienteController::class);
+    Route::get('/pedidos/{id}/fotos/{foto}', [PedidoController::class, 'foto'])
+        ->whereNumber(['id', 'foto'])
+        ->name('pedidos.fotos.show');
+
+    Route::get('/pedidos/{id}/checklist', [ChecklistController::class, 'edit'])
+        ->whereNumber('id')
+        ->name('checklist.edit');
+
+    Route::put('/pedidos/{id}/checklist', [ChecklistController::class, 'update'])
+        ->whereNumber('id')
+        ->name('checklist.update');
+
+    Route::patch('/pedidos/{id}/itens/{tipo}/{item}', [PedidoController::class, 'atualizarItem'])
+        ->whereNumber(['id', 'item'])
+        ->whereIn('tipo', ['peca', 'servico'])
+        ->name('pedidos.itens.update');
+
     Route::resource('pedidos', PedidoController::class);
 });
 

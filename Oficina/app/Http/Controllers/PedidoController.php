@@ -6,10 +6,14 @@ use App\Models\Pedido;
 use App\Models\Produto;
 use App\Models\Servico;
 use App\Models\Veiculos;
+use App\Models\FotoEntrada;
+use App\Models\ItemPedido;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class PedidoController extends Controller
 {
@@ -145,10 +149,11 @@ class PedidoController extends Controller
 
         $servicos = Servico::orderBy('nome')->get();
 
-        return view(
-            'pedidos.create',
-            compact('veiculos', 'produtos', 'servicos')
-        );
+        return view('pedidos.create', compact(
+            'veiculos',
+            'produtos',
+            'servicos'
+        ));
     }
 
     /**
@@ -158,104 +163,52 @@ class PedidoController extends Controller
     {
         $this->autorizarAcesso($request);
 
-        $dados = $this->validarCadastro($request);
+        $dados = $this->validarFormulario($request, true);
+        $fotosGuardadas = $this->guardarFotos($request);
 
-        $pedido = DB::transaction(function () use ($dados, $request) {
-            $veiculo = Veiculos::lockForUpdate()
-                ->findOrFail($dados['veiculo_id']);
+        try {
+            $pedido = DB::transaction(function () use ($dados, $request, $fotosGuardadas) {
+                $veiculo = Veiculos::lockForUpdate()
+                    ->findOrFail($dados['veiculo_id']);
 
-            $produtos = Produto::whereIn(
-                'id',
-                array_column($dados['produtos'], 'produto_id')
-            )->orderBy('id')->lockForUpdate()->get()->keyBy('id');
-
-            $servicos = Servico::whereIn(
-                'id',
-                array_column($dados['servicos'], 'servico_id')
-            )->orderBy('id')->lockForUpdate()->get()->keyBy('id');
-
-            $total = 0;
-
-            foreach ($dados['produtos'] as $item) {
-                $produto = $produtos->get($item['produto_id']);
-
-                if (!$produto || $produto->estoque < $item['quantidade']) {
-                    throw ValidationException::withMessages([
-                        'produtos' => 'Estoque insuficiente para uma das peças selecionadas.',
-                    ]);
-                }
-
-                $total += $this->centavos($produto->preco)
-                    * $item['quantidade'];
-            }
-
-            foreach ($dados['servicos'] as $item) {
-                $servico = $servicos->get($item['servico_id']);
-
-                if (!$servico) {
-                    throw ValidationException::withMessages([
-                        'servicos' => 'Um dos serviços selecionados não está mais disponível.',
-                    ]);
-                }
-
-                $total += $this->centavos($servico->preco)
-                    * $item['quantidade'];
-            }
-
-            if ($total > 9999999999) {
-                throw ValidationException::withMessages([
-                    'total' => 'O total da ordem de serviço ultrapassa o limite permitido.',
-                ]);
-            }
-
-            $pedido = Pedido::create([
-                'status' => 'ABERTO',
-                'total' => $this->decimal($total),
-                'user_id' => null,
-                'cliente_id' => $veiculo->cliente_id,
-                'usuario_id' => $request->user()->id,
-                'veiculo_id' => $veiculo->id,
-                'responsavel' => $dados['responsavel'] ?? null,
-                'observacoes' => $dados['observacoes'] ?? null,
-                'estoque_baixado' => count($dados['produtos']) > 0,
-            ]);
-
-            foreach ($dados['produtos'] as $item) {
-                $produto = $produtos->get($item['produto_id']);
-
-                $pedido->itens()->create([
-                    'produto_id' => $produto->id,
-                    'quantidade' => $item['quantidade'],
-                    'preco' => $produto->preco,
+                $pedido = Pedido::create([
+                    'status' => 'ABERTO',
+                    'total' => '0.00',
+                    'user_id' => null,
+                    'cliente_id' => $veiculo->cliente_id,
+                    'usuario_id' => $request->user()->id,
+                    'veiculo_id' => $veiculo->id,
+                    'quilometragem_entrada' => $dados['quilometragem_entrada'] ?? null,
+                    'combustivel_entrada' => $dados['combustivel_entrada'] ?? null,
+                    'avarias_entrada' => $dados['avarias_entrada'] ?? null,
+                    'responsavel' => $dados['responsavel'] ?? null,
+                    'observacoes' => $dados['observacoes'] ?? null,
+                    'estoque_baixado' => false,
                 ]);
 
-                $produto->decrement('estoque', $item['quantidade']);
-            }
+                $this->incluirItens(
+                    $pedido,
+                    $dados['produtos'],
+                    $dados['servicos']
+                );
 
-            foreach ($dados['servicos'] as $item) {
-                $servico = $servicos->get($item['servico_id']);
+                $this->registrarFotos(
+                    $pedido,
+                    $fotosGuardadas,
+                    $request->user()->id
+                );
 
-                $pedido->servicos()->create([
-                    'servico_id' => $servico->id,
-                    'quantidade' => $item['quantidade'],
-                    'preco' => $servico->preco,
-                ]);
-            }
+                return $pedido;
+            }, 3);
+        } catch (\Throwable $erro) {
+            Storage::disk('local')->delete(array_values($fotosGuardadas));
 
-            return $pedido;
-        }, 3);
-
-        $alertasEstoque = Produto::whereIn(
-            'id',
-            array_column($dados['produtos'], 'produto_id')
-        )->whereColumn('estoque', '<=', 'estoque_minimo')
-            ->orderBy('nome')
-            ->get(['nome', 'estoque', 'estoque_minimo'])
-            ->toArray();
+            throw $erro;
+        }
 
         return redirect()->route('pedidos.show', $pedido->id)
             ->with('mensagem', 'Ordem de serviço cadastrada com sucesso!')
-            ->with('alertas_estoque', $alertasEstoque);
+            ->with('alertas_estoque', $this->alertasEstoque($dados['produtos']));
     }
 
     /**
@@ -270,7 +223,10 @@ class PedidoController extends Controller
             'veiculo',
             'operador',
             'itens.produto',
+            'itens.canceladoPor',
             'servicos.servico',
+            'servicos.canceladoPor',
+            'fotosEntrada.operador',
         ])->findOrFail($id);
 
         return view('pedidos.show', compact('pedido'));
@@ -286,9 +242,24 @@ class PedidoController extends Controller
         $pedido = Pedido::with([
             'cliente',
             'veiculo',
+            'itens.produto',
+            'itens.canceladoPor',
+            'servicos.servico',
+            'servicos.canceladoPor',
+            'fotosEntrada',
         ])->findOrFail($id);
 
-        return view('pedidos.edit', compact('pedido'));
+        $produtos = Produto::where('estoque', '>', 0)
+            ->orderBy('nome')
+            ->get();
+
+        $servicos = Servico::orderBy('nome')->get();
+
+        return view('pedidos.edit', compact(
+            'pedido',
+            'produtos',
+            'servicos'
+        ));
     }
 
     /**
@@ -298,28 +269,105 @@ class PedidoController extends Controller
     {
         $this->autorizarAcesso($request);
 
-        $dados = $request->validate([
-            'status' => [
-                'required',
-                'string',
-                'in:ABERTO,EM_EXECUCAO,CONCLUIDO,CANCELADO',
-            ],
-            'responsavel' => ['nullable', 'string', 'max:255'],
-            'observacoes' => ['nullable', 'string', 'max:5000'],
-        ], [
-            'status.required' => 'Selecione o andamento da OS.',
-            'status.string' => 'Selecione um andamento válido.',
-            'status.in' => 'Selecione um andamento válido.',
-            'responsavel.string' => 'O responsável deve ser um texto.',
-            'responsavel.max' => 'O responsável deve ter até 255 caracteres.',
-            'observacoes.string' => 'As observações devem ser um texto.',
-            'observacoes.max' => 'As observações devem ter até 5000 caracteres.',
-        ]);
+        $dados = $this->validarFormulario($request, false);
+        $fotosGuardadas = $this->guardarFotos($request);
 
-        $this->alterarAndamento($id, $dados);
+        try {
+            DB::transaction(function () use ($id, $dados, $request, $fotosGuardadas) {
+                $pedido = Pedido::lockForUpdate()->findOrFail($id);
+
+                $encerrada = in_array(
+                    $pedido->status,
+                    ['CONCLUIDO', 'CANCELADO'],
+                    true
+                );
+
+                $temItensNovos = count($dados['novos_produtos']) > 0
+                    || count($dados['novos_servicos']) > 0;
+
+                if ($encerrada) {
+                    if ($temItensNovos || count($fotosGuardadas) > 0) {
+                        throw ValidationException::withMessages([
+                            'pedido' => 'Uma OS encerrada não pode receber novos itens ou fotos.',
+                        ]);
+                    }
+
+                    foreach (['quilometragem_entrada', 'combustivel_entrada', 'avarias_entrada'] as $campo) {
+                        if (array_key_exists($campo, $dados)) {
+                            $novo = $dados[$campo] ?? null;
+                            $atual = $pedido->{$campo};
+
+                            if ((string) $novo !== (string) $atual) {
+                                throw ValidationException::withMessages([
+                                    $campo => 'Os dados de entrada de uma OS encerrada não podem ser alterados.',
+                                ]);
+                            }
+                        }
+                    }
+                }
+
+                if (
+                    $dados['status'] === 'CANCELADO'
+                    && ($temItensNovos || count($fotosGuardadas) > 0)
+                ) {
+                    throw ValidationException::withMessages([
+                        'status' => 'Salve os novos itens e fotos antes de cancelar, ou remova essas inclusões do formulário.',
+                    ]);
+                }
+
+                if (
+                    $temItensNovos
+                    && !in_array(
+                        $dados['confirmar_itens'] ?? null,
+                        ['1', 1, true, 'yes', 'on'],
+                        true
+                    )
+                ) {
+                    throw ValidationException::withMessages([
+                        'confirmar_itens' => 'Confirme que os novos itens foram autorizados pelo cliente.',
+                    ]);
+                }
+
+                $this->conferirAndamento($pedido, $dados['status']);
+
+                if (!$encerrada && $dados['status'] !== 'CANCELADO') {
+                    $this->incluirItens(
+                        $pedido,
+                        $dados['novos_produtos'],
+                        $dados['novos_servicos']
+                    );
+
+                    $this->registrarFotos(
+                        $pedido,
+                        $fotosGuardadas,
+                        $request->user()->id
+                    );
+
+                    foreach (['quilometragem_entrada', 'combustivel_entrada', 'avarias_entrada'] as $campo) {
+                        if (array_key_exists($campo, $dados)) {
+                            $pedido->{$campo} = $dados[$campo];
+                        }
+                    }
+                }
+
+                $pedido->responsavel = $dados['responsavel'] ?? null;
+                $pedido->observacoes = $dados['observacoes'] ?? null;
+
+                $this->aplicarAndamento(
+                    $pedido,
+                    $dados['status'],
+                    $request->user()->id
+                );
+            }, 3);
+        } catch (\Throwable $erro) {
+            Storage::disk('local')->delete(array_values($fotosGuardadas));
+
+            throw $erro;
+        }
 
         return redirect()->route('pedidos.show', $id)
-            ->with('mensagem', 'Ordem de serviço atualizada com sucesso!');
+            ->with('mensagem', 'Ordem de serviço atualizada com sucesso!')
+            ->with('alertas_estoque', $this->alertasEstoque($dados['novos_produtos']));
     }
 
     /**
@@ -329,26 +377,155 @@ class PedidoController extends Controller
     {
         $this->autorizarAcesso($request);
 
-        $this->alterarAndamento($id, [
-            'status' => 'CANCELADO',
-        ]);
+        DB::transaction(function () use ($request, $id) {
+            $pedido = Pedido::lockForUpdate()->findOrFail($id);
+
+            $this->aplicarAndamento(
+                $pedido,
+                'CANCELADO',
+                $request->user()->id
+            );
+        }, 3);
 
         return redirect()->route('pedidos.show', $id)
             ->with('mensagem', 'OS cancelada. O histórico foi preservado.');
     }
 
-    public function imprimir(Request $request, string $id)
+    public function atualizarItem(Request $request, string $id, string $tipo, string $item)
     {
         $this->autorizarAcesso($request);
 
-        $pedido = Pedido::with([
-            'cliente',
-            'veiculo',
-            'itens.produto',
-            'servicos.servico',
-        ])->findOrFail($id);
+        abort_unless(in_array($tipo, ['peca', 'servico'], true), 404);
 
-        return view('pedidos.imprimir', compact('pedido'));
+        $dados = $request->validate([
+            'acao' => [
+                'required',
+                'string',
+                'in:iniciar,finalizar,cancelar',
+            ],
+            'motivo_cancelamento' => [
+                'nullable',
+                'required_if:acao,cancelar',
+                'string',
+                'max:1000',
+            ],
+        ], [
+            'acao.required' => 'Selecione uma ação para o item.',
+            'acao.string' => 'Selecione uma ação válida.',
+            'acao.in' => 'Selecione uma ação válida.',
+            'motivo_cancelamento.required_if' => 'Informe o motivo do cancelamento.',
+            'motivo_cancelamento.string' => 'O motivo deve ser informado em texto.',
+            'motivo_cancelamento.max' => 'O motivo deve ter até 1000 caracteres.',
+        ]);
+
+        DB::transaction(function () use ($request, $id, $tipo, $item, $dados) {
+            $pedido = Pedido::lockForUpdate()->findOrFail($id);
+
+            if (in_array($pedido->status, ['CONCLUIDO', 'CANCELADO'], true)) {
+                throw ValidationException::withMessages([
+                    'item' => 'Os itens de uma OS encerrada não podem ser alterados.',
+                ]);
+            }
+
+            $relacao = $tipo === 'peca'
+                ? $pedido->itens()
+                : $pedido->servicos();
+
+            $registro = $relacao->lockForUpdate()->findOrFail($item);
+
+            if ($dados['acao'] === 'cancelar') {
+                if ($registro->situacao === 'CANCELADO') {
+                    return;
+                }
+
+                $motivo = trim($dados['motivo_cancelamento'] ?? '');
+
+                if ($motivo === '') {
+                    throw ValidationException::withMessages([
+                        'motivo_cancelamento' => 'Informe o motivo do cancelamento.',
+                    ]);
+                }
+
+                $this->cancelarRegistro(
+                    $registro,
+                    $request->user()->id,
+                    $motivo
+                );
+            } elseif ($dados['acao'] === 'iniciar') {
+                if ($registro->situacao === 'EM_EXECUCAO') {
+                    return;
+                }
+
+                if ($registro->situacao !== 'PENDENTE') {
+                    throw ValidationException::withMessages([
+                        'item' => 'Somente um item pendente pode ser iniciado.',
+                    ]);
+                }
+
+                if (
+                    $registro instanceof ItemPedido
+                    && $registro->estoque_baixado !== true
+                ) {
+                    throw ValidationException::withMessages([
+                        'item' => 'Confira a baixa de estoque desta peça antes de iniciar sua utilização.',
+                    ]);
+                }
+
+                $registro->situacao = 'EM_EXECUCAO';
+                $registro->save();
+
+                if ($pedido->status === 'ABERTO') {
+                    $pedido->status = 'EM_EXECUCAO';
+                }
+            } else {
+                if ($registro->situacao === 'EXECUTADO') {
+                    return;
+                }
+
+                if ($registro->situacao !== 'EM_EXECUCAO') {
+                    throw ValidationException::withMessages([
+                        'item' => 'Inicie o item antes de marcá-lo como executado.',
+                    ]);
+                }
+
+                $registro->situacao = 'EXECUTADO';
+                $registro->save();
+            }
+
+            $this->recalcularTotal($pedido);
+            $this->atualizarIndicadorEstoque($pedido);
+
+            $pedido->save();
+        }, 3);
+
+        return redirect()->route('pedidos.edit', $id)
+            ->with('mensagem', 'Item atualizado com sucesso!');
+    }
+
+    public function foto(Request $request, string $id, string $foto)
+    {
+        $this->autorizarAcesso($request);
+
+        $registro = FotoEntrada::where('pedido_id', $id)
+            ->findOrFail($foto);
+
+        $disco = Storage::disk('local');
+
+        abort_unless(
+            Str::startsWith($registro->caminho, 'fotos-entrada/')
+                && $disco->exists($registro->caminho),
+            404
+        );
+
+        return response()->file($disco->path($registro->caminho), [
+            'Cache-Control' => 'private, no-store',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
+    public function imprimir(Request $request, string $id)
+    {
+        return $this->show($request, $id);
     }
 
     private function autorizarAcesso(Request $request)
@@ -360,159 +537,468 @@ class PedidoController extends Controller
         );
     }
 
-    private function validarCadastro(Request $request)
+    private function validarFormulario(Request $request, bool $cadastro)
     {
-        foreach (['produtos', 'servicos'] as $lista) {
-            $itens = $request->input($lista, []);
+        $listaProdutos = $cadastro ? 'produtos' : 'novos_produtos';
+        $listaServicos = $cadastro ? 'servicos' : 'novos_servicos';
 
-            if (is_array($itens)) {
-                $request->merge([
-                    $lista => array_values(array_filter(
-                        $itens,
-                        function ($item) {
-                            return !is_array($item)
-                                || !in_array(
-                                    $item['quantidade'] ?? null,
-                                    [null, '', 0, '0'],
-                                    true
-                                );
-                        }
-                    )),
-                ]);
+        foreach ([$listaProdutos, $listaServicos] as $lista) {
+            if (!$request->has($lista)) {
+                $request->merge([$lista => []]);
             }
         }
 
-        $dados = $request->validate([
-            'veiculo_id' => [
-                'required',
+        $regras = [
+            'quilometragem_entrada' => [
+                'nullable',
                 'integer',
-                'exists:veiculos,id',
+                'min:0',
+                'max:4294967295',
             ],
+            'combustivel_entrada' => [
+                'nullable',
+                'string',
+                'in:VAZIO,UM_QUARTO,METADE,TRES_QUARTOS,CHEIO',
+            ],
+            'avarias_entrada' => ['nullable', 'string', 'max:5000'],
             'responsavel' => ['nullable', 'string', 'max:255'],
             'observacoes' => ['nullable', 'string', 'max:5000'],
 
-            'produtos' => ['present', 'array', 'max:100'],
-            'produtos.*' => ['array'],
-            'produtos.*.produto_id' => [
+            'fotos_entrada' => [
+                $cadastro ? 'required' : 'nullable',
+                'array:FRENTE,TRASEIRA,LATERAL_ESQUERDA,LATERAL_DIREITA',
+            ],
+
+            $listaProdutos => ['present', 'array', 'max:100'],
+            $listaProdutos . '.*' => ['array:produto_id,quantidade'],
+            $listaProdutos . '.*.produto_id' => [
                 'required',
                 'integer',
                 'distinct',
                 'exists:produtos,id',
             ],
-            'produtos.*.quantidade' => [
+            $listaProdutos . '.*.quantidade' => [
                 'required',
                 'integer',
                 'min:1',
                 'max:1000000',
             ],
 
-            'servicos' => ['present', 'array', 'max:100'],
-            'servicos.*' => ['array'],
-            'servicos.*.servico_id' => [
+            $listaServicos => ['present', 'array', 'max:100'],
+            $listaServicos . '.*' => ['array:servico_id,quantidade'],
+            $listaServicos . '.*.servico_id' => [
                 'required',
                 'integer',
                 'distinct',
                 'exists:servicos,id',
             ],
-            'servicos.*.quantidade' => [
+            $listaServicos . '.*.quantidade' => [
                 'required',
                 'integer',
                 'min:1',
                 'max:1000000',
             ],
-        ], [
-            'veiculo_id.required' => 'Selecione um veículo.',
-            'veiculo_id.exists' => 'Selecione um veículo cadastrado.',
-            'produtos.*.produto_id.exists' => 'Selecione uma peça cadastrada.',
-            'produtos.*.produto_id.distinct' => 'Não repita a mesma peça na ordem de serviço.',
-            'produtos.*.quantidade.integer' => 'A quantidade de peças deve ser inteira.',
-            'produtos.*.quantidade.min' => 'A quantidade de peças deve ser maior que zero.',
-            'servicos.*.servico_id.exists' => 'Selecione um serviço cadastrado.',
-            'servicos.*.servico_id.distinct' => 'Não repita o mesmo serviço na ordem de serviço.',
-            'servicos.*.quantidade.integer' => 'A quantidade de serviços deve ser inteira.',
-            'servicos.*.quantidade.min' => 'A quantidade de serviços deve ser maior que zero.',
-        ]);
+        ];
 
-        if (!$dados['produtos'] && !$dados['servicos']) {
-            throw ValidationException::withMessages([
-                'itens' => 'Inclua pelo menos uma peça ou um serviço na ordem de serviço.',
-            ]);
+        if ($cadastro) {
+            $regras['veiculo_id'] = [
+                'required',
+                'integer',
+                'exists:veiculos,id',
+            ];
+        } else {
+            $regras['status'] = [
+                'required',
+                'string',
+                'in:ABERTO,EM_EXECUCAO,CONCLUIDO,CANCELADO',
+            ];
+
+            $regras['confirmar_itens'] = ['nullable', 'accepted'];
         }
 
-        return $dados;
+        foreach (FotoEntrada::POSICOES as $posicao => $titulo) {
+            $regras['fotos_entrada.' . $posicao] = [
+                $cadastro ? 'required' : 'nullable',
+                'image',
+                'mimes:jpg,jpeg,png,webp',
+                'max:15360',
+            ];
+        }
+
+        return $request->validate($regras, [
+            'required' => 'O campo :attribute é obrigatório.',
+            'integer' => 'O campo :attribute deve ser um número inteiro.',
+            'string' => 'O campo :attribute deve ser um texto.',
+            'array' => 'Confira os dados enviados em :attribute.',
+            'distinct' => 'Não repita o mesmo item na lista de novas inclusões.',
+            'exists' => 'Um dos registros selecionados não foi encontrado.',
+            'in' => 'Selecione uma opção válida para :attribute.',
+            'min' => 'O campo :attribute deve ser no mínimo :min.',
+            'max' => 'O campo :attribute ultrapassa o limite permitido.',
+            'accepted' => 'Confirme que os novos itens foram autorizados pelo cliente.',
+
+            'fotos_entrada.required' => 'Envie as quatro fotos de entrada.',
+            'fotos_entrada.*.required' => 'Envie uma foto de cada posição do veículo.',
+            'fotos_entrada.*.uploaded' => 'Não foi possível enviar uma das fotos. Confira o tamanho do arquivo.',
+            'fotos_entrada.*.image' => 'Selecione uma imagem válida.',
+            'fotos_entrada.*.mimes' => 'As fotos devem ser JPG, JPEG, PNG ou WEBP.',
+            'fotos_entrada.*.max' => 'Cada foto deve ter no máximo 15 MB.',
+        ], [
+            'veiculo_id' => 'veículo',
+            'status' => 'andamento',
+            'quilometragem_entrada' => 'quilometragem',
+            'combustivel_entrada' => 'combustível',
+            'avarias_entrada' => 'avarias',
+            'responsavel' => 'responsável',
+            'observacoes' => 'observações',
+
+            $listaProdutos => 'peças',
+            $listaProdutos . '.*.produto_id' => 'peça',
+            $listaProdutos . '.*.quantidade' => 'quantidade de peças',
+
+            $listaServicos => 'serviços',
+            $listaServicos . '.*.servico_id' => 'serviço',
+            $listaServicos . '.*.quantidade' => 'quantidade de serviços',
+        ]);
     }
 
-    private function alterarAndamento($id, array $dados)
+    private function guardarFotos(Request $request): array
     {
-        DB::transaction(function () use ($id, $dados) {
-            $pedido = Pedido::lockForUpdate()->findOrFail($id);
+        $guardadas = [];
+        $pasta = 'fotos-entrada/' . Str::uuid();
 
-            $statusAtual = $pedido->status;
-            $novoStatus = $dados['status'];
+        try {
+            foreach (FotoEntrada::POSICOES as $posicao => $titulo) {
+                if (!$request->hasFile('fotos_entrada.' . $posicao)) {
+                    continue;
+                }
 
-            if (
-                in_array($statusAtual, ['CONCLUIDO', 'CANCELADO'], true)
-                && $novoStatus !== $statusAtual
-            ) {
-                throw ValidationException::withMessages([
-                    'status' => 'Uma ordem de serviço concluída ou cancelada não pode mudar de andamento.',
-                ]);
-            }
+                $caminho = $request->file('fotos_entrada.' . $posicao)
+                    ->store($pasta, 'local');
 
-            if (
-                $statusAtual === 'EM_EXECUCAO'
-                && $novoStatus === 'ABERTO'
-            ) {
-                throw ValidationException::withMessages([
-                    'status' => 'Não é possível voltar a ordem de serviço para ABERTO.',
-                ]);
-            }
-
-            if (
-                $novoStatus === 'CANCELADO'
-                && $statusAtual !== 'CANCELADO'
-            ) {
-                $itens = $pedido->itens()
-                    ->orderBy('produto_id')
-                    ->get();
-
-                if (
-                    $itens->isNotEmpty()
-                    && $pedido->estoque_baixado === null
-                ) {
+                if (!$caminho) {
                     throw ValidationException::withMessages([
-                        'status' => 'Esta ordem de serviço antiga possui peças cuja baixa não foi conferida. Confira o estoque antes de cancelá-la.',
+                        'fotos_entrada' => 'Não foi possível guardar uma das fotos. Tente novamente.',
                     ]);
                 }
 
-                if ($pedido->estoque_baixado) {
-                    foreach ($itens as $item) {
-                        $produto = Produto::lockForUpdate()
-                            ->findOrFail($item->produto_id);
+                $guardadas[$posicao] = $caminho;
+            }
+        } catch (\Throwable $erro) {
+            Storage::disk('local')->delete(array_values($guardadas));
 
-                        $novoSaldo = $produto->estoque + $item->quantidade;
+            throw $erro;
+        }
 
-                        if (
-                            $item->quantidade <= 0
-                            || $novoSaldo > 2147483647
-                        ) {
-                            throw ValidationException::withMessages([
-                                'estoque' => 'Não foi possível repor uma das peças. Confira a quantidade e o saldo.',
-                            ]);
-                        }
+        return $guardadas;
+    }
 
-                        $produto->increment(
-                            'estoque',
-                            $item->quantidade
-                        );
-                    }
-                }
-
-                $pedido->estoque_baixado = false;
+    private function registrarFotos(Pedido $pedido, array $fotos, $usuarioId)
+    {
+        foreach ($fotos as $posicao => $caminho) {
+            if (
+                $pedido->fotosEntrada()
+                ->where('posicao', $posicao)
+                ->exists()
+            ) {
+                throw ValidationException::withMessages([
+                    'fotos_entrada' => 'Já existe uma foto para ' . FotoEntrada::POSICOES[$posicao] . '. A foto original foi preservada.',
+                ]);
             }
 
-            $pedido->fill($dados)->save();
-        }, 3);
+            $pedido->fotosEntrada()->create([
+                'usuario_id' => $usuarioId,
+                'posicao' => $posicao,
+                'caminho' => $caminho,
+            ]);
+        }
+    }
+
+    private function incluirItens(Pedido $pedido, array $novosProdutos, array $novosServicos)
+    {
+        if (count($novosProdutos) === 0 && count($novosServicos) === 0) {
+            return;
+        }
+
+        if (
+            count($novosProdutos) > 0
+            && $pedido->itens()
+            ->where('situacao', '!=', 'CANCELADO')
+            ->whereNull('estoque_baixado')
+            ->exists()
+        ) {
+            throw ValidationException::withMessages([
+                'novos_produtos' => 'Esta OS possui peças antigas com baixa de estoque ainda não conferida. Confira esse histórico antes de adicionar outras peças.',
+            ]);
+        }
+
+        $produtos = Produto::whereIn(
+            'id',
+            array_column($novosProdutos, 'produto_id')
+        )->orderBy('id')
+            ->lockForUpdate()
+            ->get()
+            ->keyBy('id');
+
+        $servicos = Servico::whereIn(
+            'id',
+            array_column($novosServicos, 'servico_id')
+        )->orderBy('id')
+            ->lockForUpdate()
+            ->get()
+            ->keyBy('id');
+
+        foreach ($novosProdutos as $item) {
+            $produto = $produtos->get($item['produto_id']);
+
+            if (!$produto || $produto->estoque < $item['quantidade']) {
+                throw ValidationException::withMessages([
+                    'produtos' => 'Estoque insuficiente para uma das peças selecionadas.',
+                ]);
+            }
+
+            $this->centavos($produto->preco);
+
+            $pedido->itens()->create([
+                'produto_id' => $produto->id,
+                'quantidade' => $item['quantidade'],
+                'preco' => $produto->preco,
+                'situacao' => 'PENDENTE',
+                'estoque_baixado' => true,
+            ]);
+
+            $produto->decrement('estoque', $item['quantidade']);
+        }
+
+        foreach ($novosServicos as $item) {
+            $servico = $servicos->get($item['servico_id']);
+
+            if (!$servico) {
+                throw ValidationException::withMessages([
+                    'servicos' => 'Um dos serviços selecionados não está mais disponível.',
+                ]);
+            }
+
+            $this->centavos($servico->preco);
+
+            $pedido->servicos()->create([
+                'servico_id' => $servico->id,
+                'quantidade' => $item['quantidade'],
+                'preco' => $servico->preco,
+                'situacao' => 'PENDENTE',
+            ]);
+        }
+
+        $this->recalcularTotal($pedido);
+        $this->atualizarIndicadorEstoque($pedido);
+
+        $pedido->save();
+    }
+
+    private function conferirAndamento(Pedido $pedido, string $novoStatus)
+    {
+        if (
+            in_array($pedido->status, ['CONCLUIDO', 'CANCELADO'], true)
+            && $novoStatus !== $pedido->status
+        ) {
+            throw ValidationException::withMessages([
+                'status' => 'Uma OS concluída ou cancelada não pode mudar de andamento.',
+            ]);
+        }
+
+        if (
+            $pedido->status === 'EM_EXECUCAO'
+            && $novoStatus === 'ABERTO'
+        ) {
+            throw ValidationException::withMessages([
+                'status' => 'Não é possível voltar a OS para ABERTO.',
+            ]);
+        }
+    }
+
+    private function aplicarAndamento(Pedido $pedido, string $novoStatus, $usuarioId)
+    {
+        $this->conferirAndamento($pedido, $novoStatus);
+
+        if (
+            $novoStatus === 'CANCELADO'
+            && $pedido->status !== 'CANCELADO'
+        ) {
+            $pecas = $pedido->itens()
+                ->orderBy('produto_id')
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+
+            $servicos = $pedido->servicos()
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($pecas->concat($servicos) as $registro) {
+                if (
+                    $registro->situacao !== 'CANCELADO'
+                    && $registro->situacao !== 'PENDENTE'
+                ) {
+                    throw ValidationException::withMessages([
+                        'status' => 'Esta OS possui trabalho iniciado ou executado e não pode ser cancelada integralmente. Cancele somente os itens pendentes.',
+                    ]);
+                }
+            }
+
+            foreach ($pecas->concat($servicos) as $registro) {
+                $this->cancelarRegistro(
+                    $registro,
+                    $usuarioId,
+                    'Cancelamento integral da ordem de serviço.'
+                );
+            }
+
+            $this->recalcularTotal($pedido);
+            $this->atualizarIndicadorEstoque($pedido);
+        }
+
+        if (
+            $novoStatus === 'CONCLUIDO'
+            && $pedido->status !== 'CONCLUIDO'
+        ) {
+            $pecasPendentes = $pedido->itens()
+                ->whereIn('situacao', ['PENDENTE', 'EM_EXECUCAO'])
+                ->exists();
+
+            $servicosPendentes = $pedido->servicos()
+                ->whereIn('situacao', ['PENDENTE', 'EM_EXECUCAO'])
+                ->exists();
+
+            if ($pecasPendentes || $servicosPendentes) {
+                throw ValidationException::withMessages([
+                    'status' => 'Finalize os trabalhos ou cancele os itens pendentes antes de concluir a OS.',
+                ]);
+            }
+
+            $this->recalcularTotal($pedido);
+            $this->atualizarIndicadorEstoque($pedido);
+        }
+
+        $pedido->status = $novoStatus;
+        $pedido->save();
+    }
+
+    private function cancelarRegistro($registro, $usuarioId, string $motivo)
+    {
+        if ($registro->situacao === 'CANCELADO') {
+            return;
+        }
+
+        if ($registro->situacao !== 'PENDENTE') {
+            throw ValidationException::withMessages([
+                'item' => 'Somente itens pendentes podem ser cancelados. Trabalhos iniciados ou executados exigem avaliação da oficina.',
+            ]);
+        }
+
+        if ($registro instanceof ItemPedido) {
+            if ($registro->estoque_baixado === null) {
+                throw ValidationException::withMessages([
+                    'estoque' => 'A baixa de estoque desta peça antiga precisa ser conferida antes do cancelamento.',
+                ]);
+            }
+
+            if ($registro->estoque_baixado === true) {
+                $produto = Produto::lockForUpdate()
+                    ->findOrFail($registro->produto_id);
+
+                $novoSaldo = $produto->estoque + $registro->quantidade;
+
+                if (
+                    $registro->quantidade <= 0
+                    || $novoSaldo > 2147483647
+                ) {
+                    throw ValidationException::withMessages([
+                        'estoque' => 'Não foi possível devolver a peça ao estoque. Confira a quantidade e o saldo.',
+                    ]);
+                }
+
+                $produto->increment('estoque', $registro->quantidade);
+            }
+
+            $registro->estoque_baixado = false;
+        }
+
+        $registro->situacao = 'CANCELADO';
+        $registro->cancelado_em = now();
+        $registro->cancelado_por = $usuarioId;
+        $registro->motivo_cancelamento = $motivo;
+
+        $registro->save();
+    }
+
+    private function recalcularTotal(Pedido $pedido)
+    {
+        $pecas = $pedido->itens()
+            ->where('situacao', '!=', 'CANCELADO')
+            ->get();
+
+        $servicos = $pedido->servicos()
+            ->where('situacao', '!=', 'CANCELADO')
+            ->get();
+
+        $total = 0;
+
+        foreach ($pecas->concat($servicos) as $registro) {
+            if (
+                $registro->quantidade <= 0
+                || $registro->quantidade > 1000000
+            ) {
+                throw ValidationException::withMessages([
+                    'itens' => 'Existe um item com quantidade inválida. Confira a OS.',
+                ]);
+            }
+
+            $total += $this->centavos($registro->preco)
+                * $registro->quantidade;
+
+            $this->conferirTotal($total);
+        }
+
+        $pedido->total = $this->decimal($total);
+    }
+
+    private function atualizarIndicadorEstoque(Pedido $pedido)
+    {
+        $pecasAtivas = $pedido->itens()
+            ->where('situacao', '!=', 'CANCELADO')
+            ->get();
+
+        if ($pecasAtivas->contains(function ($item) {
+            return $item->estoque_baixado === null;
+        })) {
+            $pedido->estoque_baixado = null;
+            return;
+        }
+
+        $pedido->estoque_baixado = $pecasAtivas->contains(function ($item) {
+            return $item->estoque_baixado === true;
+        });
+    }
+
+    private function alertasEstoque(array $itens): array
+    {
+        return Produto::whereIn(
+            'id',
+            array_column($itens, 'produto_id')
+        )->whereColumn('estoque', '<=', 'estoque_minimo')
+            ->orderBy('nome')
+            ->get(['nome', 'estoque', 'estoque_minimo'])
+            ->toArray();
+    }
+
+    private function conferirTotal(int $total)
+    {
+        if ($total > 9999999999) {
+            throw ValidationException::withMessages([
+                'total' => 'O total da ordem de serviço ultrapassa o limite permitido.',
+            ]);
+        }
     }
 
     private function centavos($valor): int

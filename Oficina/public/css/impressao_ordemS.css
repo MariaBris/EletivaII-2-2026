@@ -1,12 +1,17 @@
 @page {
-    size: A4;
-    margin: 15mm;
+    size: A4 portrait;
+    margin: 10mm;
 }
 
 @media print {
+
+    html,
     body {
-        background: white !important;
         min-height: auto !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #fff !important;
+        color: #000 !important;
     }
 
     nav,
@@ -16,14 +21,19 @@
     .navbar-custom,
     .footer-custom,
     .nao-imprimir,
+    .os-tela,
     button,
     .btn {
         display: none !important;
     }
 
-    .container {
+    main,
+    .container,
+    .container-fluid {
         width: 100% !important;
-        max-width: 100% !important;
+        max-width: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }
 
     .card {
@@ -42,13 +52,91 @@
         break-inside: avoid;
     }
 
-    @media print {
-        .barra-acoes {
-            position: static !important;
-            padding: 0 !important;
-            border: none !important;
-            border-radius: 0 !important;
-            box-shadow: none !important;
-        }
+    .barra-acoes {
+        position: static !important;
+        padding: 0 !important;
+        border: none !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+    }
+
+    .os-impressao {
+        display: block !important;
+        color: #000;
+        font-family: Arial, sans-serif;
+        font-size: 11px;
+        line-height: 1.2;
+    }
+
+    .os-impressao .ficha-cabecalho {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 12px;
+        break-inside: avoid;
+    }
+
+    .os-impressao .ficha-logo {
+        width: 75px;
+        height: auto;
+    }
+
+    .os-impressao .ficha-titulo {
+        flex: 1;
+        text-align: center;
+    }
+
+    .os-impressao .ficha-titulo h1 {
+        margin: 0 0 4px;
+        font-size: 16px;
+    }
+
+    .os-impressao .ficha-titulo p {
+        margin: 0;
+    }
+
+    .os-impressao table {
+        width: 100%;
+        margin-bottom: 12px;
+        border-collapse: collapse;
+        font-size: 11px;
+    }
+
+    .os-impressao th,
+    .os-impressao td {
+        padding: 5px;
+        border: 1px solid #000;
+        vertical-align: top;
+        overflow-wrap: anywhere;
+    }
+
+    .os-impressao th {
+        background: #eee;
+        font-weight: bold;
+    }
+
+    .os-impressao .ficha-quantidade {
+        width: 75px;
+        text-align: center;
+    }
+
+    .os-impressao .ficha-valor {
+        width: 105px;
+        text-align: right;
+        white-space: nowrap;
+    }
+
+    .os-impressao .ficha-texto {
+        height: 25px;
+        white-space: pre-wrap;
+    }
+
+    .os-impressao .ficha-total {
+        padding: 10px;
+        border: 1px solid #000;
+        font-size: 14px;
+        text-align: right;
+        break-inside: avoid;
     }
 }

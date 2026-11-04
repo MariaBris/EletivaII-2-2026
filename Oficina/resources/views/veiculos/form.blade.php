@@ -35,7 +35,7 @@
         <select id="cliente_id" name="cliente_id" class="form-select" aria-describedby="cliente-ajuda">
             <option value="" @selected(blank(old('cliente_id', $veiculo->cliente_id ?? null)))>Sem cliente cadastrado</option>
             @foreach($clientes as $cliente)
-            <option value="{{ $cliente->id }}" @selected(old('cliente_id', $veiculo->cliente_id ?? null) == $cliente->id)>{{ $cliente->nome }} — {{ $cliente->telefone ?? 'Telefone não informado' }}</option>
+            <option value="{{ $cliente->id }}" @selected(old('cliente_id', $veiculo->cliente_id ?? null) == $cliente->id)>{{ $cliente->nome }} - {{ $cliente->telefone ?? 'Telefone não informado' }}</option>
             @endforeach
         </select>
 

@@ -4,7 +4,7 @@
 
 @section('content')
 <div class="barra-acoes d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
-    <h1 class="h3 mb-0">{{ trim(($veiculo->marca ?? '') . ' ' . ($veiculo->modelo ?? '')) }} — {{ $veiculo->placa }}</h1>
+    <h1 class="h3 mb-0">{{ trim(($veiculo->marca ?? '') . ' ' . ($veiculo->modelo ?? '')) }} - {{ $veiculo->placa }}</h1>
 
         <div class="d-flex flex-wrap gap-2">
         <a href="{{ route('veiculos.index') }}" class="btn btn-outline-dark">Voltar</a>
@@ -46,13 +46,13 @@
             <dd class="col-sm-9">{{ $veiculo->placa }}</dd>
 
             <dt class="col-sm-3">Marca</dt>
-            <dd class="col-sm-9">{{ $veiculo->marca ?? '—' }}</dd>
+            <dd class="col-sm-9">{{ $veiculo->marca ?? '-' }}</dd>
 
             <dt class="col-sm-3">Modelo</dt>
-            <dd class="col-sm-9">{{ $veiculo->modelo ?? '—' }}</dd>
+            <dd class="col-sm-9">{{ $veiculo->modelo ?? '-' }}</dd>
 
             <dt class="col-sm-3">Ano</dt>
-            <dd class="col-sm-9">{{ $veiculo->ano ?? '—' }}</dd>
+            <dd class="col-sm-9">{{ $veiculo->ano ?? '-' }}</dd>
 
             <dt class="col-sm-3">Proprietário</dt>
             <dd class="col-sm-9">{{ $veiculo->cliente?->nome ?? 'Sem cliente cadastrado' }}</dd>

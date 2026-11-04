@@ -15,14 +15,28 @@ class Pedido extends Model
         'cliente_id',
         'usuario_id',
         'veiculo_id',
+        'quilometragem_entrada',
+        'combustivel_entrada',
+        'avarias_entrada',
+        'saida_em',
         'responsavel',
         'observacoes',
-        'estoque_baixado'
+        'estoque_baixado',
     ];
 
     protected $casts = [
         'total' => 'decimal:2',
-        'estoque_baixado' => 'boolean'
+        'quilometragem_entrada' => 'integer',
+        'saida_em' => 'datetime',
+        'estoque_baixado' => 'boolean',
+    ];
+
+    public const COMBUSTIVEIS = [
+        'VAZIO' => 'Vazio / reserva',
+        'UM_QUARTO' => '1/4 do tanque',
+        'METADE' => 'Metade do tanque',
+        'TRES_QUARTOS' => '3/4 do tanque',
+        'CHEIO' => 'Cheio',
     ];
 
     public function cliente()
@@ -58,5 +72,15 @@ class Pedido extends Model
     public function recebimentos()
     {
         return $this->hasMany(Recebimento::class, 'pedido_id');
+    }
+
+    public function fotosEntrada()
+    {
+        return $this->hasMany(FotoEntrada::class, 'pedido_id');
+    }
+
+    public function checklistItens()
+    {
+        return $this->hasMany(ChecklistItem::class, 'pedido_id');
     }
 }

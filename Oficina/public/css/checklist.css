@@ -1,0 +1,128 @@
+.checklist-impressao {
+    display: none;
+}
+
+.checklist-opcoes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+}
+
+.checklist-opcoes .form-check {
+    margin-bottom: 0;
+}
+
+@media print {
+    @page {
+        size: A4 portrait;
+        margin: 10mm;
+    }
+
+    nav,
+    header,
+    footer,
+    .navbar,
+    .nao-imprimir,
+    .checklist-tela {
+        display: none !important;
+    }
+
+    html,
+    body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #fff !important;
+        color: #000 !important;
+    }
+
+    main,
+    main.container,
+    main.container-fluid {
+        width: 100% !important;
+        max-width: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .checklist-impressao {
+        display: block !important;
+        color: #000;
+        font-family: Arial, sans-serif;
+        font-size: 11px;
+        line-height: 1.2;
+    }
+
+    .checklist-impressao .ficha-cabecalho {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 12px;
+    }
+
+    .checklist-impressao .ficha-logo {
+        width: 75px;
+        height: auto;
+    }
+
+    .checklist-impressao .ficha-titulo {
+        flex: 1;
+        text-align: center;
+    }
+
+    .checklist-impressao .ficha-titulo h1 {
+        margin: 0 0 4px;
+        font-size: 16px;
+    }
+
+    .checklist-impressao .ficha-titulo p {
+        margin: 0;
+    }
+
+    .checklist-impressao table {
+        width: 100%;
+        margin-bottom: 12px;
+        border-collapse: collapse;
+        font-size: 11px;
+    }
+
+    .checklist-impressao th,
+    .checklist-impressao td {
+        padding: 5px;
+        border: 1px solid #000;
+        vertical-align: top;
+        overflow-wrap: anywhere;
+    }
+
+    .checklist-impressao th {
+        background: #eee;
+        font-weight: bold;
+    }
+
+    .checklist-impressao thead {
+        display: table-header-group;
+    }
+
+    .checklist-impressao tr {
+        break-inside: avoid;
+    }
+
+    .checklist-impressao .ficha-opcao {
+        width: 60px;
+        text-align: center;
+        vertical-align: middle;
+    }
+
+    .checklist-impressao .ficha-observacao {
+        width: 40%;
+    }
+
+    .checklist-impressao .ficha-texto {
+        white-space: pre-wrap;
+    }
+
+    .checklist-impressao .ficha-nota {
+        margin: 4px 0 0;
+        font-size: 10px;
+    }
+}

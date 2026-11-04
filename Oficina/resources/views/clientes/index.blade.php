@@ -73,7 +73,7 @@
                         {{ $cliente->telefone }}
                         @endif
                     </td>
-                    <td>{{ $cliente->email ?? '—' }}</td>
+                    <td>{{ $cliente->email ?? '-' }}</td>
 
                     <td class="col-acoes">
                         <div class="d-flex justify-content-end flex-wrap gap-2">

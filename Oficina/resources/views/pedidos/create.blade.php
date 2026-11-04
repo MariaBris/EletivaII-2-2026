@@ -1,11 +1,11 @@
 @extends('layout')
 
-@section('title', 'Abrir ordem de serviço - Mazotto')
+@section('title', 'Abrir OS - Mazotto')
 
 @section('content')
 @php
 $veiculoSelecionado = $veiculos->firstWhere('id', old('veiculo_id', request()->query('veiculo_id')));
-$rotuloVeiculo = fn ($veiculo) => $veiculo->placa . ' — ' . ($veiculo->modelo ?? 'Modelo não informado') . ' — ' . ($veiculo->cliente?->nome ?? 'Sem cliente cadastrado');
+$rotuloVeiculo = fn ($veiculo) => $veiculo->placa . ' - ' . ($veiculo->modelo ?? 'Modelo não informado') . ' - ' . ($veiculo->cliente?->nome ?? 'Sem cliente cadastrado');
 
 $grupos = [
 'produtos' => ['titulo' => 'Peças', 'botao' => 'Adicionar peça', 'itens' => $produtos],
@@ -19,10 +19,10 @@ $itensAnteriores = [
 @endphp
 
 <div class="barra-acoes d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
-    <h1 class="h3 mb-0">Abrir ordem de serviço</h1>
+    <h1 class="h3 mb-0">Abrir OS</h1>
 
     <div class="d-flex flex-wrap gap-2">
-        <button type="submit" form="formulario-os" class="btn btn-primary" @disabled($veiculos->isEmpty() || ($produtos->isEmpty() && $servicos->isEmpty()))>Abrir ordem de serviço</button>
+        <button type="submit" form="formulario-os" class="btn btn-primary" @disabled($veiculos->isEmpty())>Abrir OS</button>
         <a href="{{ route('pedidos.index') }}" class="btn btn-secondary">Cancelar</a>
     </div>
 </div>
@@ -42,11 +42,7 @@ $itensAnteriores = [
 @endif
 
 @if($veiculos->isEmpty())
-<div class="alert alert-warning">Cadastre um veículo antes de abrir uma ordem de serviço.</div>
-@endif
-
-@if($produtos->isEmpty() && $servicos->isEmpty())
-<div class="alert alert-warning">É necessário ter uma peça disponível ou um serviço cadastrado para abrir a ordem de serviço.</div>
+<div class="alert alert-warning">Cadastre um veículo antes de abrir uma OS.</div>
 @endif
 
 <div class="mb-4">
@@ -55,7 +51,7 @@ $itensAnteriores = [
 
 <div class="card border-0 shadow-sm">
     <div class="card-body p-4">
-        <form id="formulario-os" method="POST" action="{{ route('pedidos.store') }}">
+        <form id="formulario-os" method="POST" action="{{ route('pedidos.store') }}" enctype="multipart/form-data">
             @csrf
 
             <div class="mb-3">
@@ -69,7 +65,7 @@ $itensAnteriores = [
                     @endforeach
                 </datalist>
 
-                <p id="veiculo-ajuda" class="form-text mb-0">Digite para encontrar e escolha um veículo sugerido. A ordem de serviço utiliza o cliente vinculado a ele, se houver.</p>
+                <p id="veiculo-ajuda" class="form-text mb-0">Digite para encontrar e escolha um veículo sugerido. A OS utiliza o cliente vinculado a ele, se houver.</p>
             </div>
 
             <div class="mb-3">
@@ -81,6 +77,8 @@ $itensAnteriores = [
                 <label for="observacoes" class="form-label">Solicitação do cliente / observações (opcional)</label>
                 <textarea id="observacoes" name="observacoes" class="form-control" rows="4" maxlength="5000">{{ old('observacoes') }}</textarea>
             </div>
+
+            @include('pedidos.entrada')
 
             <div id="aviso-itens" class="alert alert-warning d-none" role="alert" tabindex="-1"></div>
 
@@ -94,7 +92,7 @@ $itensAnteriores = [
                         <select id="{{ $tipo }}-selecao" class="form-select" data-selecao>
                             <option value="">Selecione...</option>
                             @foreach($grupo['itens'] as $item)
-                            <option value="{{ $item->id }}" data-nome="{{ $item->nome }}" data-preco="{{ $item->preco }}" @if($tipo==='produtos' ) data-estoque="{{ $item->estoque }}" @endif>{{ $item->nome }} — R$ {{ number_format($item->preco, 2, ',', '.') }}@if($tipo === 'produtos') — Estoque: {{ $item->estoque }}@endif</option>
+                            <option value="{{ $item->id }}" data-nome="{{ $item->nome }}" data-preco="{{ $item->preco }}" @if($tipo==='produtos' ) data-estoque="{{ $item->estoque }}" @endif>{{ $item->nome }} - R$ {{ number_format($item->preco, 2, ',', '.') }}@if($tipo === 'produtos') - Estoque: {{ $item->estoque }}@endif</option>
                             @endforeach
                         </select>
                     </div>
@@ -165,6 +163,7 @@ $itensAnteriores = [
             style: 'currency',
             currency: 'BRL'
         });
+
         const grupos = [];
         const modelo = document.getElementById('modelo-item-os');
         const busca = document.getElementById('veiculo-busca');
@@ -173,6 +172,7 @@ $itensAnteriores = [
         const anteriores = JSON.parse(document.getElementById('itens-anteriores-os').textContent);
         const chaveRascunho = 'mazotto.os.rascunho.{{ auth()->id() }}';
         const parametros = new URLSearchParams(window.location.search);
+
         let rascunho = null;
 
         if (parametros.get('retomar') === '1') {
@@ -192,7 +192,7 @@ $itensAnteriores = [
             anteriores.servicos = [];
 
             for (const [nome, valor] of rascunho.campos) {
-                if (['responsavel', 'observacoes'].includes(nome)) {
+                if (['responsavel', 'observacoes', 'quilometragem_entrada', 'combustivel_entrada', 'avarias_entrada'].includes(nome)) {
                     formulario.elements.namedItem(nome).value = valor;
                 }
 
@@ -211,6 +211,7 @@ $itensAnteriores = [
                 }
             }
         }
+
         const normalizar = texto => texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
 
         function informar(texto) {
@@ -226,7 +227,11 @@ $itensAnteriores = [
 
         function conferirVeiculo() {
             const texto = normalizar(busca.value);
-            const encontrado = veiculos.find(opcao => normalizar(opcao.value) === texto || normalizar(opcao.dataset.placa) === texto);
+
+            const encontrado = veiculos.find(opcao =>
+                normalizar(opcao.value) === texto ||
+                normalizar(opcao.dataset.placa) === texto
+            );
 
             veiculoId.value = encontrado ? encontrado.dataset.id : '';
             busca.setCustomValidity(encontrado ? '' : 'Escolha um veículo cadastrado entre as sugestões.');
@@ -238,14 +243,22 @@ $itensAnteriores = [
 
         function precoEmCentavos(texto) {
             const [inteiro, decimal = ''] = texto.split('.');
+
             return Number(inteiro) * 100 + Number(decimal.padEnd(2, '0'));
         }
 
         function limiteItem(grupo, opcao) {
             const preco = precoEmCentavos(opcao.dataset.preco);
-            const limiteEstoque = grupo.tipo === 'produtos' ? Number(opcao.dataset.estoque) : 1000000;
 
-            return Math.min(limiteEstoque, 1000000, preco > 0 ? Math.floor(9999999999 / preco) : 1000000);
+            const limiteEstoque = grupo.tipo === 'produtos' ?
+                Number(opcao.dataset.estoque) :
+                1000000;
+
+            return Math.min(
+                limiteEstoque,
+                1000000,
+                preco > 0 ? Math.floor(9999999999 / preco) : 1000000
+            );
         }
 
         function atualizarTotais() {
@@ -256,7 +269,12 @@ $itensAnteriores = [
 
                 for (const item of grupo.itens.values()) {
                     const quantidade = Number(item.quantidade.value);
-                    const subtotal = Number.isInteger(quantidade) && quantidade > 0 && quantidade <= item.limite ? quantidade * item.preco : 0;
+
+                    const subtotal = Number.isInteger(quantidade) &&
+                        quantidade > 0 &&
+                        quantidade <= item.limite ?
+                        quantidade * item.preco :
+                        0;
 
                     item.linha.querySelector('[data-subtotal]').textContent = moeda.format(subtotal / 100);
                     total += subtotal;
@@ -264,27 +282,45 @@ $itensAnteriores = [
             }
 
             document.getElementById('total-previsto').textContent = moeda.format(total / 100);
+
             return total;
         }
 
         function adicionar(grupo, opcao, quantidade, restaurando = false) {
             const existente = grupo.itens.get(opcao.value);
             const limite = limiteItem(grupo, opcao);
-            const novaQuantidade = existente ? Number(existente.quantidade.value) + Number(quantidade) : Number(quantidade);
 
-            if (!restaurando && (!Number.isInteger(novaQuantidade) || novaQuantidade < 1 || novaQuantidade > limite)) {
-                informar(grupo.tipo === 'produtos' ? 'Confira a quantidade. Ela deve respeitar o estoque disponível.' : 'Informe uma quantidade válida para o serviço.');
+            const novaQuantidade = existente ?
+                Number(existente.quantidade.value) + Number(quantidade) :
+                Number(quantidade);
+
+            if (
+                !restaurando &&
+                (
+                    !Number.isInteger(novaQuantidade) ||
+                    novaQuantidade < 1 ||
+                    novaQuantidade > limite
+                )
+            ) {
+                informar(
+                    grupo.tipo === 'produtos' ?
+                    'Confira a quantidade. Ela deve respeitar o estoque disponível.' :
+                    'Informe uma quantidade válida para o serviço.'
+                );
+
                 return false;
             }
 
             if (existente) {
                 existente.quantidade.value = novaQuantidade;
                 atualizarTotais();
+
                 return true;
             }
 
             if (grupo.itens.size >= 100) {
-                informar('É permitido adicionar até 100 tipos de peças e 100 tipos de serviços por ordem de serviço.');
+                informar('É permitido adicionar até 100 tipos de peças e 100 tipos de serviços por OS.');
+
                 return false;
             }
 
@@ -327,6 +363,7 @@ $itensAnteriores = [
 
             grupo.corpo.append(linha);
             atualizarTotais();
+
             return true;
         }
 
@@ -350,7 +387,10 @@ $itensAnteriores = [
 
                 grupo.quantidade.disabled = !selecionado;
                 grupo.botao.disabled = !selecionado;
-                grupo.quantidade.max = selecionado ? limiteItem(grupo, opcao) : 1000000;
+
+                grupo.quantidade.max = selecionado ?
+                    limiteItem(grupo, opcao) :
+                    1000000;
             });
 
             grupo.botao.addEventListener('click', () => {
@@ -372,10 +412,15 @@ $itensAnteriores = [
             const campo = grupo.tipo === 'produtos' ? 'produto_id' : 'servico_id';
 
             for (const item of Object.values(anteriores[grupo.tipo] ?? {})) {
-                const opcao = [...grupo.selecao.options].find(opcao => opcao.value && opcao.value === String(item?.[campo]));
+                const opcao = [...grupo.selecao.options].find(opcao =>
+                    opcao.value && opcao.value === String(item?.[campo])
+                );
 
-                if (opcao) adicionar(grupo, opcao, item.quantidade ?? '', true);
-                else informar('Um item do formulário anterior não está mais disponível. Confira a seleção antes de salvar.');
+                if (opcao) {
+                    adicionar(grupo, opcao, item.quantidade ?? '', true);
+                } else {
+                    informar('Um item do formulário anterior não está mais disponível. Confira a seleção antes de salvar.');
+                }
             }
         }
 
@@ -389,22 +434,23 @@ $itensAnteriores = [
 
             if (grupos.some(grupo => grupo.selecao.value)) {
                 evento.preventDefault();
-                informar('Há um item selecionado que ainda não foi adicionado. Clique em Adicionar peça ou Adicionar serviço.');
-                return;
-            }
 
-            if (!grupos.some(grupo => grupo.itens.size)) {
-                evento.preventDefault();
-                informar('Adicione pelo menos uma peça ou um serviço para abrir a ordem de serviço.');
+                informar('Há um item selecionado que ainda não foi adicionado. Clique em Adicionar peça ou Adicionar serviço.');
                 return;
             }
 
             if (atualizarTotais() > 9999999999) {
                 evento.preventDefault();
-                informar('O total da ordem de serviço ultrapassa o limite permitido. Confira os itens e as quantidades.');
+
+                informar('O total da OS ultrapassa o limite permitido. Confira os itens e as quantidades.');
             }
         });
+
         if (rascunho) {
+            if (rascunho.temFotos) {
+                informar('O preenchimento foi recuperado. Selecione novamente as quatro fotos antes de salvar.');
+            }
+
             for (const grupo of grupos) {
                 const pendente = rascunho.selecoes?.[grupo.tipo];
 
@@ -423,6 +469,17 @@ $itensAnteriores = [
         }
 
         document.getElementById('cadastrar-veiculo-os').addEventListener('click', evento => {
+            const temFotos = [...formulario.querySelectorAll('[data-foto-entrada]')]
+                .some(campo => campo.files.length > 0);
+
+            if (
+                temFotos &&
+                !confirm('Os textos e itens serão preservados, mas as fotos precisarão ser selecionadas novamente ao retornar. Continuar?')
+            ) {
+                evento.preventDefault();
+                return;
+            }
+
             const selecoes = {};
 
             for (const grupo of grupos) {
@@ -434,7 +491,8 @@ $itensAnteriores = [
 
             const dadosRascunho = {
                 campos: [...new FormData(formulario).entries()]
-                    .filter(([nome]) => nome !== '_token'),
+                    .filter(([nome, valor]) => nome !== '_token' && typeof valor === 'string'),
+                temFotos,
                 selecoes,
             };
 
@@ -448,6 +506,43 @@ $itensAnteriores = [
 
                 informar('Não foi possível guardar o preenchimento para cadastrar o veículo. Permaneça nesta tela para não perder os dados.');
             }
+        });
+
+        document.querySelectorAll('[data-foto-entrada]').forEach(campo => {
+            const posicao = campo.id.replace('foto-', '');
+            const previa = document.getElementById('previa-' + posicao);
+
+            let enderecoPrevia = null;
+
+            campo.addEventListener('change', () => {
+                if (enderecoPrevia) {
+                    URL.revokeObjectURL(enderecoPrevia);
+                }
+
+                previa.hidden = true;
+                previa.removeAttribute('src');
+                campo.setCustomValidity('');
+
+                const arquivo = campo.files[0];
+
+                if (!arquivo) return;
+
+                if (arquivo.size > 15 * 1024 * 1024) {
+                    campo.setCustomValidity('Cada foto deve ter no máximo 15 MB.');
+                    campo.reportValidity();
+                    return;
+                }
+
+                enderecoPrevia = URL.createObjectURL(arquivo);
+                previa.src = enderecoPrevia;
+                previa.hidden = false;
+            });
+
+            window.addEventListener('beforeunload', () => {
+                if (enderecoPrevia) {
+                    URL.revokeObjectURL(enderecoPrevia);
+                }
+            });
         });
     })();
 </script>

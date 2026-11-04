@@ -20,14 +20,17 @@ $parametrosVeiculo = isset($veiculoFiltrado)
     <h1 class="h3 mb-0">Ordens de serviço</h1>
 
     <div class="d-flex flex-wrap gap-2">
-        <a href="{{ route('dashboard') }}" class="btn btn-outline-dark">Voltar ao início</a>
-        <a href="{{ route('pedidos.create', $parametrosVeiculo) }}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Nova ordem de serviço</a>
+        <div class="d-flex flex-wrap gap-2">
+    <a href="{{ route('dashboard') }}" class="btn btn-outline-dark">Voltar ao início</a>
+    <a href="{{ route('checklist.modelo') }}" class="btn btn-outline-dark">Imprimir modelo de checklist</a>
+    <a href="{{ route('pedidos.create', isset($veiculoFiltrado) ? ['veiculo_id' => $veiculoFiltrado->id] : []) }}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Nova OS</a>
+</div>
     </div>
 </div>
 
 @if($veiculoFiltrado ?? null)
 <div class="alert alert-info d-flex justify-content-between align-items-center flex-wrap gap-2">
-    <span>Histórico do veículo: {{ trim(($veiculoFiltrado->marca ?? '') . ' ' . ($veiculoFiltrado->modelo ?? '')) }} — {{ $veiculoFiltrado->placa }}</span>
+    <span>Histórico do veículo: {{ trim(($veiculoFiltrado->marca ?? '') . ' ' . ($veiculoFiltrado->modelo ?? '')) }} - {{ $veiculoFiltrado->placa }}</span>
     <a href="{{ route('pedidos.index') }}" class="btn btn-sm btn-outline-dark">Mostrar todas as OS</a>
 </div>
 @endif
@@ -121,14 +124,14 @@ $parametrosVeiculo = isset($veiculoFiltrado)
 
                     <td class="col-acoes">
                         <div class="d-flex justify-content-end flex-wrap gap-2">
-                            <a href="{{ route('pedidos.show', $pedido->id) }}" class="btn btn-sm btn-outline-dark" title="Consultar" aria-label="Consultar ordem de serviço"><i class="bi bi-eye" aria-hidden="true"></i></a>
-                            <a href="{{ route('pedidos.edit', $pedido->id) }}" class="btn btn-sm btn-primary" title="Atualizar" aria-label="Atualizar ordem de serviço"><i class="bi bi-pencil-square" aria-hidden="true"></i></a>
+                            <a href="{{ route('pedidos.show', $pedido->id) }}" class="btn btn-sm btn-outline-dark" title="Consultar" aria-label="Consultar OS"><i class="bi bi-eye" aria-hidden="true"></i></a>
+                            <a href="{{ route('pedidos.edit', $pedido->id) }}" class="btn btn-sm btn-primary" title="Atualizar" aria-label="Atualizar OS"><i class="bi bi-pencil-square" aria-hidden="true"></i></a>
                         </div>
                     </td>
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="7" class="text-center text-muted py-4">Nenhuma ordem de serviço encontrada para esta consulta.</td>
+                    <td colspan="7" class="text-center text-muted py-4">Nenhuma OS encontrada para esta consulta.</td>
                 </tr>
                 @endforelse
             </tbody>
