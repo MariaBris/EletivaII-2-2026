@@ -9,6 +9,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 
 class ProdutoController extends Controller
 {
@@ -108,21 +109,44 @@ class ProdutoController extends Controller
     public function update(Request $request, string $id)
     {
         $produto = Produto::findOrFail($id); // Localiza o registo que será alterado
-        $dados = $this->validar($request); // Pega os novos dados validados do formulário
+        $dados = $this->validar($request, false); // Pega os novos dados validados do formulário
+
+        $quantidadeRecebida = (int) ($dados['quantidade_recebida'] ?? 0);
+        unset($dados['quantidade_recebida']);
 
         $dados = $this->prepararImagem($request, $dados);
 
-        // Executa a atualização e completa as reservas que aguardavam reposição.
-        $alterado = ReservaEstoque::transacao(function () use ($id, $dados) {
-            $produto = Produto::lockForUpdate()->findOrFail($id);
+        // Soma a entrada ao saldo atual bloqueado e completa as reservas pendentes.
+        try {
+            $alterado = ReservaEstoque::transacao(function () use ($id, $dados, $quantidadeRecebida) {
+                $produto = Produto::lockForUpdate()->findOrFail($id);
 
-            return $produto->update($dados) ? $produto : null;
-        });
+                if ($quantidadeRecebida > 2147483647 - $produto->estoque) {
+                    throw ValidationException::withMessages([
+                        'quantidade_recebida' => 'A entrada ultrapassa o limite permitido para o estoque.',
+                    ]);
+                }
+
+                if ($quantidadeRecebida > 0) {
+                    $dados['estoque'] = $produto->estoque + $quantidadeRecebida;
+                }
+
+                return $produto->update($dados) ? $produto : null;
+            });
+        } catch (\Throwable $erro) {
+            if ($request->hasFile('imagem_arquivo') && isset($dados['imagem'])) {
+                File::delete(public_path($dados['imagem']));
+            }
+
+            throw $erro;
+        }
 
         if ($alterado) {
             $produto = $alterado;
             return redirect()->route('produtos.index')
-                ->with('mensagem', "O produto '{$produto->nome}' foi alterado com sucesso!");
+                ->with('mensagem', $quantidadeRecebida > 0
+                    ? "Produto atualizado! Entrada de {$quantidadeRecebida} unidade(s) registrada. Estoque físico: {$produto->estoque}."
+                    : "O produto '{$produto->nome}' foi alterado com sucesso!");
         }
 
         return back()->withInput()
@@ -161,9 +185,9 @@ class ProdutoController extends Controller
             ->with('mensagem', "O produto '{$nomeProduto}' foi excluído com sucesso!");
     }
 
-    private function validar(Request $request)
+    private function validar(Request $request, bool $cadastro = true)
     {
-        return $request->validate([
+        $regras = [
             'nome' => ['required', 'string', 'max:255'],
             'categoria_id' => [
                 'required',
@@ -177,12 +201,6 @@ class ProdutoController extends Controller
                 'decimal:0,2',
                 'min:0',
                 'max:99999999.99',
-            ],
-            'estoque' => [
-                'required',
-                'integer',
-                'min:0',
-                'max:2147483647',
             ],
             'estoque_minimo' => [
                 'required',
@@ -201,7 +219,17 @@ class ProdutoController extends Controller
                 'url:http,https',
                 'max:255',
             ],
-        ], [
+        ];
+
+        $regras['estoque'] = $cadastro
+            ? ['required', 'integer', 'min:0', 'max:2147483647']
+            : ['prohibited'];
+
+        $regras['quantidade_recebida'] = $cadastro
+            ? ['prohibited']
+            : ['nullable', 'integer', 'min:0', 'max:2147483647'];
+
+        $dados = $request->validate($regras, [
             'nome.required' => 'Informe o nome do produto.',
             'nome.string' => 'O nome deve ser um texto.',
             'nome.max' => 'O nome deve ter até 255 caracteres.',
@@ -219,10 +247,16 @@ class ProdutoController extends Controller
             'preco.min' => 'O preço não pode ser negativo.',
             'preco.max' => 'O preço máximo permitido é R$ 99.999.999,99.',
 
-            'estoque.required' => 'Informe a quantidade em estoque.',
+            'estoque.required' => 'Informe o estoque inicial.',
             'estoque.integer' => 'O estoque deve ser um número inteiro.',
             'estoque.min' => 'O estoque não pode ser negativo.',
             'estoque.max' => 'A quantidade em estoque ultrapassa o limite permitido.',
+            'estoque.prohibited' => 'O estoque atual é somente para consulta. Informe a quantidade recebida para registrar uma entrada.',
+
+            'quantidade_recebida.prohibited' => 'No cadastro, informe a quantidade no campo Estoque inicial.',
+            'quantidade_recebida.integer' => 'A quantidade recebida deve ser um número inteiro.',
+            'quantidade_recebida.min' => 'A quantidade recebida não pode ser negativa.',
+            'quantidade_recebida.max' => 'A quantidade recebida ultrapassa o limite permitido.',
 
             'estoque_minimo.required' => 'Informe o estoque mínimo.',
             'estoque_minimo.integer' => 'O estoque mínimo deve ser um número inteiro.',
@@ -237,6 +271,14 @@ class ProdutoController extends Controller
             'imagem_url.url' => 'Informe um endereço de imagem começando com http:// ou https://.',
             'imagem_url.max' => 'O endereço da imagem deve ter até 255 caracteres.',
         ]);
+
+        if ($cadastro) {
+            unset($dados['quantidade_recebida']);
+        } else {
+            unset($dados['estoque']);
+        }
+
+        return $dados;
     }
 
     private function prepararImagem(Request $request, array $dados)
