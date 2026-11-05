@@ -22,6 +22,7 @@ $parametrosVeiculo = isset($veiculoFiltrado)
     <div class="d-flex flex-wrap gap-2">
         <div class="d-flex flex-wrap gap-2">
     <a href="{{ route('dashboard') }}" class="btn btn-outline-dark">Voltar ao início</a>
+    <a href="{{ route('agendamentos.index') }}" class="btn btn-outline-dark">Agendamentos</a>
     <a href="{{ route('checklist.modelo') }}" class="btn btn-outline-dark">Imprimir modelo de checklist</a>
     <a href="{{ route('pedidos.create', isset($veiculoFiltrado) ? ['veiculo_id' => $veiculoFiltrado->id] : []) }}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Nova OS</a>
 </div>

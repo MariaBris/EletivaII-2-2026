@@ -12,7 +12,7 @@
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav ms-auto align-items-lg-center">
                 @auth
-                <li class="nav-item"><a class="nav-link" href="{{ route('dashboard') }}">Painel</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ route('dashboard') }}">início</a></li>
 
                 {{-- Esconder os links melhora a navegação; o middleware protege as rotas. --}}
                 @if(auth()->user()->role === 'ADM')

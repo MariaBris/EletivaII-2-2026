@@ -1,142 +1,257 @@
-@page {
-    size: A4 portrait;
-    margin: 10mm;
-}
-
-@media print {
-
-    html,
-    body {
-        min-height: auto !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        background: #fff !important;
-        color: #000 !important;
-    }
-
-    nav,
-    header,
-    footer,
-    .navbar,
-    .navbar-custom,
-    .footer-custom,
-    .nao-imprimir,
-    .os-tela,
-    button,
-    .btn {
-        display: none !important;
-    }
-
-    main,
-    .container,
-    .container-fluid {
-        width: 100% !important;
-        max-width: none !important;
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-
-    .card {
-        box-shadow: none !important;
-    }
-
-    .table-responsive {
-        overflow: visible !important;
-    }
-
-    thead {
-        display: table-header-group;
-    }
-
-    tr {
-        break-inside: avoid;
-    }
-
-    .barra-acoes {
-        position: static !important;
-        padding: 0 !important;
-        border: none !important;
-        border-radius: 0 !important;
-        box-shadow: none !important;
-    }
-
-    .os-impressao {
-        display: block !important;
+    .ficha-checklist {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 24px;
+        background: #fff;
         color: #000;
-        font-family: Arial, sans-serif;
-        font-size: 11px;
-        line-height: 1.2;
     }
 
-    .os-impressao .ficha-cabecalho {
+    .ficha-cabecalho {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        gap: 16px;
-        margin-bottom: 12px;
-        break-inside: avoid;
+        gap: 20px;
+        margin-bottom: 16px;
     }
 
-    .os-impressao .ficha-logo {
-        width: 75px;
+    .ficha-logo {
+        width: 100px;
         height: auto;
     }
 
-    .os-impressao .ficha-titulo {
-        flex: 1;
-        text-align: center;
-    }
-
-    .os-impressao .ficha-titulo h1 {
-        margin: 0 0 4px;
-        font-size: 16px;
-    }
-
-    .os-impressao .ficha-titulo p {
-        margin: 0;
-    }
-
-    .os-impressao table {
+    .ficha-tabela {
         width: 100%;
-        margin-bottom: 12px;
+        margin-bottom: 16px;
         border-collapse: collapse;
-        font-size: 11px;
+        font-size: 13px;
     }
 
-    .os-impressao th,
-    .os-impressao td {
-        padding: 5px;
+    .ficha-tabela th,
+    .ficha-tabela td {
+        padding: 6px;
         border: 1px solid #000;
-        vertical-align: top;
-        overflow-wrap: anywhere;
+        vertical-align: middle;
     }
 
-    .os-impressao th {
+    .ficha-tabela th {
         background: #eee;
+    }
+
+    .ficha-titulo {
+        text-align: center;
         font-weight: bold;
     }
 
-    .os-impressao .ficha-quantidade {
-        width: 75px;
+    .ficha-campo {
+        height: 42px;
+        vertical-align: top !important;
+    }
+
+    .ficha-opcao {
+        width: 55px;
         text-align: center;
     }
 
-    .os-impressao .ficha-valor {
-        width: 105px;
-        text-align: right;
-        white-space: nowrap;
+    .ficha-observacao {
+        width: 35%;
     }
 
-    .os-impressao .ficha-texto {
-        height: 25px;
-        white-space: pre-wrap;
+    .ficha-linha {
+        min-height: 32px;
+        margin-bottom: 12px;
+        border-bottom: 1px solid #000;
     }
 
-    .os-impressao .ficha-total {
-        padding: 10px;
-        border: 1px solid #000;
-        font-size: 14px;
-        text-align: right;
-        break-inside: avoid;
+    .ficha-inspecao-visual {
+        display: flex;
+        align-items: center;
+        gap: 20px;
     }
+
+    .ficha-imagem-carro {
+        display: block;
+        width: 100%;
+        height: auto;
+    }
+
+    .ficha-combustivel {
+        flex: 0 0 25%;
+        text-align: center;
+    }
+
+    .ficha-carro {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .ficha-imagem-combustivel {
+        display: block;
+        width: 100%;
+        height: auto;
+    }
+
+    @page {
+        size: A4 portrait;
+        margin: 8mm;
+    }
+
+    @media print {
+
+        nav,
+        header,
+        footer,
+        .navbar,
+        .nao-imprimir {
+            display: none !important;
+        }
+
+        html,
+        body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #fff !important;
+            color: #000 !important;
+        }
+
+        main,
+        main.container,
+        main.container-fluid {
+            width: 100% !important;
+            max-width: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        .ficha-checklist {
+            max-width: none;
+            margin: 0;
+            padding: 0;
+            font-size: 9px;
+            line-height: 1.15;
+        }
+
+        .ficha-cabecalho {
+            gap: 10px;
+            margin-bottom: 6px;
+        }
+
+        .ficha-cabecalho h2 {
+            font-size: 14px;
+        }
+
+        .ficha-cabecalho p {
+            font-size: 10px;
+        }
+
+        .ficha-logo {
+            width: 65px;
+        }
+
+        .ficha-tabela {
+            margin-bottom: 6px;
+            font-size: 9px;
+        }
+
+        .ficha-tabela th,
+        .ficha-tabela td {
+            padding: 2px 4px;
+            line-height: 1.15;
+        }
+
+        .ficha-tabela tr {
+            break-inside: avoid;
+        }
+
+        .ficha-tabela thead {
+            display: table-header-group;
+        }
+
+        .ficha-campo {
+            height: 24px;
+        }
+
+        .ficha-opcao {
+            width: 45px;
+        }
+
+        .ficha-observacao {
+            width: 38%;
+        }
+
+        .ficha-inspecao-visual {
+            gap: 12px;
+        }
+
+        .ficha-imagem-carro {
+            width: 100%;
+            max-height: 42mm;
+            object-fit: contain;
+        }
+
+        .ficha-imagem-combustivel {
+            width: 100%;
+            max-height: 25mm;
+            object-fit: contain;
+        }
+
+        .ficha-checklist .small {
+            font-size: 9px;
+        }
+
+        .ficha-checklist p {
+            margin-bottom: 4px !important;
+        }
+
+        .ficha-linha {
+            min-height: 18px;
+            margin-bottom: 5px;
+        }
+
+        .ficha-pagina-mecanica {
+            break-before: page;
+        }
+    }
+
+.documento-os {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 24px;
+    background: #fff;
+    color: #000;
+    font-family: Arial, sans-serif;
+    font-size: 12px;
+    line-height: 1.3;
+}
+.documento-os table { width: 100%; border-collapse: collapse; margin: 0 0 12px; table-layout: fixed; }
+.documento-os th, .documento-os td { border: 1px solid #333; padding: 5px; vertical-align: top; overflow-wrap: anywhere; }
+.documento-os th { background: #eee; }
+.documento-os h1 { font-size: 18px; margin: 0 0 4px; }
+.documento-os h2 { font-size: 14px; margin: 14px 0 8px; }
+.documento-os p { margin: 0 0 8px; }
+.documento-os .ficha-opcao { width: 55px; text-align: center; }
+.documento-os .ficha-observacao { width: 38%; }
+.ficha-texto { white-space: pre-wrap; overflow-wrap: anywhere; }
+.ficha-auditoria { display: block; margin-top: 3px; font-size: 9px; }
+.ficha-assinaturas { margin-top: 35px; line-height: 3; }
+.ficha-resumo { margin-top: 30px; border-top: 2px solid #333; padding-top: 20px; }
+
+@media print {
+    html, body { display: block !important; min-height: 0 !important; height: auto !important; margin: 0 !important; padding: 0 !important; background: #fff !important; }
+    .navbar, nav, footer, .footer-custom, .nao-imprimir, .btn, button { display: none !important; }
+    body > .container { width: 100% !important; max-width: none !important; margin: 0 !important; padding: 0 !important; flex: none !important; }
+    .documento-os { max-width: none; margin: 0; padding: 0; font-size: 10px; line-height: 1.2; }
+    .documento-os .ficha-logo { width: 65px; }
+    .documento-os h1 { font-size: 15px; }
+    .documento-os h2 { font-size: 12px; margin: 10px 0 5px; break-after: avoid; }
+    .documento-os table { margin-bottom: 7px; }
+    .documento-os th, .documento-os td { padding: 3px; }
+    thead { display: table-header-group; }
+    tr { break-inside: avoid; }
+    .table-responsive { overflow: visible !important; }
+    .ficha-cabecalho { break-inside: avoid; }
+    .ficha-resumo { margin: 0; padding: 0; border: 0; }
+    .ficha-resumo-separado { break-before: page; }
+    .ficha-resumo table { font-size: 12px; margin-bottom: 14px; }
+    .ficha-resumo td, .ficha-resumo th { padding: 8px; }
+    .ficha-resumo p { font-size: 11px; }
 }

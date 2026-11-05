@@ -4,7 +4,25 @@
 
 @section('content')
 @php
-$retornarParaOs = old('origem', request()->query('origem')) === 'os';
+$origem = old('origem', request()->query('origem'));
+$retornarParaOs = $origem === 'os';
+$retornarParaAgendamento = $origem === 'agendamento';
+
+$agendamentoRetornoId = filter_var(
+    old('agendamento_id', request()->query('agendamento_id')),
+    FILTER_VALIDATE_INT,
+    ['options' => ['min_range' => 1]]
+) ?: null;
+
+$rotaCancelar = route('veiculos.index');
+
+if ($retornarParaOs) {
+    $rotaCancelar = route('pedidos.create', ['retomar' => 1]);
+} elseif ($retornarParaAgendamento) {
+    $rotaCancelar = $agendamentoRetornoId
+        ? route('agendamentos.edit', ['agendamento' => $agendamentoRetornoId, 'retomar' => 1])
+        : route('agendamentos.create', ['retomar' => 1]);
+}
 @endphp
 
 <div class="barra-acoes d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
@@ -12,7 +30,7 @@ $retornarParaOs = old('origem', request()->query('origem')) === 'os';
 
     <div class="d-flex flex-wrap gap-2">
         <button type="submit" form="formulario-veiculo" class="btn btn-primary">Salvar</button>
-        <a href="{{ $retornarParaOs ? route('pedidos.create', ['retomar' => 1]) : route('veiculos.index') }}" class="btn btn-secondary">Cancelar</a>
+        <a href="{{ $rotaCancelar }}" class="btn btn-secondary">Cancelar</a>
     </div>
 </div>
 
@@ -26,6 +44,8 @@ $retornarParaOs = old('origem', request()->query('origem')) === 'os';
 
 @if($retornarParaOs)
 <div class="alert alert-info">Após salvar, você retornará à ordem de serviço com este veículo selecionado.</div>
+@elseif($retornarParaAgendamento)
+<div class="alert alert-info">Após salvar, você retornará ao agendamento com este veículo selecionado.</div>
 @endif
 
 <div class="card border-0 shadow-sm">
@@ -33,8 +53,12 @@ $retornarParaOs = old('origem', request()->query('origem')) === 'os';
         <form id="formulario-veiculo" method="POST" action="{{ route('veiculos.store') }}">
             @csrf
 
-            @if($retornarParaOs)
-            <input type="hidden" name="origem" value="os">
+            @if($retornarParaOs || $retornarParaAgendamento)
+            <input type="hidden" name="origem" value="{{ $origem }}">
+            @endif
+
+            @if($retornarParaAgendamento && $agendamentoRetornoId)
+            <input type="hidden" name="agendamento_id" value="{{ $agendamentoRetornoId }}">
             @endif
 
             @include('veiculos.form', ['veiculo' => null])

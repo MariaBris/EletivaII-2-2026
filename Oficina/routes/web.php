@@ -7,7 +7,7 @@ use App\Http\Controllers\VeiculosController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ServicoController;
 use App\Http\Controllers\PedidoController;
-use App\Http\Controllers\ChecklistController;
+use App\Http\Controllers\AgendamentoController;
 use App\Http\Middleware\VerificarAdministrador;
 use App\Models\Produto;
 use Illuminate\Support\Facades\Auth;
@@ -21,11 +21,8 @@ Route::get('/dashboard', function () {
     $produtosEstoqueBaixo = null;
 
     if (in_array(Auth::user()->role, ['ADM', 'FUNC'], true)) {
-        $produtosEstoqueBaixo = Produto::whereColumn(
-            'estoque',
-            '<=',
-            'estoque_minimo'
-        )->orderBy('estoque')
+        $produtosEstoqueBaixo = Produto::whereColumn('estoque', '<=', 'estoque_minimo')
+            ->orderBy('estoque')
             ->orderBy('nome')
             ->orderBy('id')
             ->paginate(10, ['*'], 'estoque_page')
@@ -36,23 +33,20 @@ Route::get('/dashboard', function () {
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])
-        ->name('profile.edit');
-
-    Route::patch('/profile', [ProfileController::class, 'update'])
-        ->name('profile.update');
-
-    Route::delete('/profile', [ProfileController::class, 'destroy'])
-        ->name('profile.destroy');
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     Route::middleware(VerificarAdministrador::class)->group(function () {
         Route::resource('categorias', CategoriaController::class);
         Route::resource('produtos', ProdutoController::class);
         Route::resource('servicos', ServicoController::class);
 
-        Route::get('/checklist/modelo', [ChecklistController::class, 'modelo'])
+        Route::get('/checklist/modelo', [PedidoController::class, 'modelo'])
             ->name('checklist.modelo');
     });
+
+    Route::resource('agendamentos', AgendamentoController::class);
 
     Route::resource('veiculos', VeiculosController::class);
     Route::resource('clientes', ClienteController::class);
@@ -65,13 +59,13 @@ Route::middleware('auth')->group(function () {
         ->whereNumber(['id', 'foto'])
         ->name('pedidos.fotos.show');
 
-    Route::get('/pedidos/{id}/checklist', [ChecklistController::class, 'edit'])
+    Route::patch('/pedidos/{id}/itens/finalizar-lote', [PedidoController::class, 'finalizarSelecionados'])
         ->whereNumber('id')
-        ->name('checklist.edit');
+        ->name('pedidos.itens.finalizar-lote');
 
-    Route::put('/pedidos/{id}/checklist', [ChecklistController::class, 'update'])
+    Route::patch('/pedidos/{id}/itens/autorizar-iniciar', [PedidoController::class, 'autorizarEIniciarSelecionados'])
         ->whereNumber('id')
-        ->name('checklist.update');
+        ->name('pedidos.itens.autorizar-iniciar');
 
     Route::patch('/pedidos/{id}/itens/{tipo}/{item}', [PedidoController::class, 'atualizarItem'])
         ->whereNumber(['id', 'item'])

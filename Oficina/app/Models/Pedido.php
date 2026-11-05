@@ -11,6 +11,7 @@ class Pedido extends Model
     protected $fillable = [
         'status',
         'total',
+        'total_orcamento',
         'user_id',
         'cliente_id',
         'usuario_id',
@@ -26,6 +27,7 @@ class Pedido extends Model
 
     protected $casts = [
         'total' => 'decimal:2',
+        'total_orcamento' => 'decimal:2',
         'quilometragem_entrada' => 'integer',
         'saida_em' => 'datetime',
         'estoque_baixado' => 'boolean',

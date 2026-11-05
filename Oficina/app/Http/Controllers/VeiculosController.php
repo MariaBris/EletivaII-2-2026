@@ -8,8 +8,8 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class VeiculosController extends Controller
 {
@@ -66,12 +66,23 @@ class VeiculosController extends Controller
 
         return view('veiculos.index', compact('veiculos'));
     }
+
     /**
      * Show the form for creating a new resource.
      */
     public function create(Request $request)
     {
         $this->autorizarAcesso($request);
+
+        $validacao = Validator::make(
+            $request->query(),
+            $this->regrasRetorno()
+        );
+
+        if ($validacao->fails()) {
+            return redirect()->route('veiculos.index')
+                ->withErrors($validacao);
+        }
 
         $clientes = Cliente::orderBy('nome')->get();
 
@@ -85,16 +96,34 @@ class VeiculosController extends Controller
     {
         $this->autorizarAcesso($request);
 
+        $retorno = $request->validate($this->regrasRetorno());
         $dados = $this->validar($request);
         $dados['user_id'] = null;
 
         $veiculo = Veiculos::create($dados);
 
-        if ($request->input('origem') === 'os') {
+        if (($retorno['origem'] ?? null) === 'os') {
             return redirect()->route('pedidos.create', [
                 'veiculo_id' => $veiculo->id,
                 'retomar' => 1,
             ])->with('mensagem', 'Veículo cadastrado! Continue preenchendo a ordem de serviço.');
+        }
+
+        if (($retorno['origem'] ?? null) === 'agendamento') {
+            $parametros = [
+                'veiculo_id' => $veiculo->id,
+                'retomar' => 1,
+            ];
+
+            if (!empty($retorno['agendamento_id'])) {
+                $parametros['agendamento'] = $retorno['agendamento_id'];
+                $rota = 'agendamentos.edit';
+            } else {
+                $rota = 'agendamentos.create';
+            }
+
+            return redirect()->route($rota, $parametros)
+                ->with('mensagem', 'Veículo cadastrado! Continue preenchendo o agendamento.');
         }
 
         return redirect()->route('veiculos.index')
@@ -183,6 +212,22 @@ class VeiculosController extends Controller
                 && in_array($request->user()->role, ['ADM', 'FUNC'], true),
             403
         );
+    }
+
+    private function regrasRetorno(): array
+    {
+        return [
+            'origem' => [
+                'nullable',
+                'string',
+                Rule::in(['os', 'agendamento']),
+            ],
+            'agendamento_id' => [
+                'nullable',
+                'integer',
+                'exists:agendamentos,id',
+            ],
+        ];
     }
 
     private function validar(Request $request, $id = null)

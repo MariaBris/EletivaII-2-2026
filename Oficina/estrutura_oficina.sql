@@ -93,7 +93,7 @@ CREATE TABLE `checklist_itens` (
   KEY `checklist_itens_conferido_por_idx` (`conferido_por`),
   CONSTRAINT `fk_checklist_itens_conferente` FOREIGN KEY (`conferido_por`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `fk_checklist_itens_pedido` FOREIGN KEY (`pedido_id`) REFERENCES `pedidos` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
-) ENGINE=InnoDB AUTO_INCREMENT=72 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=81 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -176,7 +176,7 @@ CREATE TABLE `fotos_entrada` (
   KEY `fotos_entrada_usuario_idx` (`usuario_id`),
   CONSTRAINT `fotos_entrada_pedido_fk` FOREIGN KEY (`pedido_id`) REFERENCES `pedidos` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `fotos_entrada_usuario_fk` FOREIGN KEY (`usuario_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -191,21 +191,33 @@ CREATE TABLE `itens_pedido` (
   `preco` decimal(10,2) NOT NULL,
   `pedido_id` bigint NOT NULL,
   `produto_id` bigint NOT NULL,
-  `situacao` enum('PENDENTE','EM_EXECUCAO','EXECUTADO','CANCELADO') NOT NULL DEFAULT 'PENDENTE',
+  `situacao` enum('PENDENTE','EM_EXECUCAO','EXECUTADO','CANCELADO','INTERROMPIDO') NOT NULL DEFAULT 'PENDENTE',
+  `autorizacao` enum('AGUARDANDO','AUTORIZADO','RECUSADO') NOT NULL DEFAULT 'AGUARDANDO',
+  `autorizacao_em` datetime DEFAULT NULL,
+  `autorizacao_por` bigint unsigned DEFAULT NULL,
   `estoque_baixado` tinyint DEFAULT NULL,
   `cancelado_em` datetime DEFAULT NULL,
   `cancelado_por` bigint unsigned DEFAULT NULL,
   `motivo_cancelamento` varchar(1000) DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
+  `valor_cobrado` decimal(10,2) DEFAULT NULL,
+  `quantidade_devolvida` int unsigned NOT NULL DEFAULT '0',
+  `interrompido_em` datetime DEFAULT NULL,
+  `interrompido_por` bigint unsigned DEFAULT NULL,
+  `motivo_interrupcao` varchar(1000) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `fk_itens_pedidos_pedidos1_idx` (`pedido_id`),
   KEY `fk_itens_pedidos_produtos1_idx` (`produto_id`),
   KEY `fk_item_pedido_cancelado_por_idx` (`cancelado_por`),
+  KEY `fk_item_pedido_interrompido_por` (`interrompido_por`),
+  KEY `fk_item_pedido_autorizacao_por` (`autorizacao_por`),
+  CONSTRAINT `fk_item_pedido_autorizacao_por` FOREIGN KEY (`autorizacao_por`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `fk_item_pedido_cancelado_por` FOREIGN KEY (`cancelado_por`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_item_pedido_interrompido_por` FOREIGN KEY (`interrompido_por`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `fk_itens_pedidos_pedidos1` FOREIGN KEY (`pedido_id`) REFERENCES `pedidos` (`id`),
   CONSTRAINT `fk_itens_pedidos_produtos1` FOREIGN KEY (`produto_id`) REFERENCES `produtos` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -220,20 +232,31 @@ CREATE TABLE `itens_servico` (
   `preco` decimal(10,2) NOT NULL,
   `pedido_id` bigint NOT NULL,
   `servico_id` bigint unsigned NOT NULL,
-  `situacao` enum('PENDENTE','EM_EXECUCAO','EXECUTADO','CANCELADO') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'PENDENTE',
+  `situacao` enum('PENDENTE','EM_EXECUCAO','EXECUTADO','CANCELADO','INTERROMPIDO') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'PENDENTE',
+  `autorizacao` enum('AGUARDANDO','AUTORIZADO','RECUSADO') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'AGUARDANDO',
+  `autorizacao_em` datetime DEFAULT NULL,
+  `autorizacao_por` bigint unsigned DEFAULT NULL,
   `cancelado_em` datetime DEFAULT NULL,
   `cancelado_por` bigint unsigned DEFAULT NULL,
   `motivo_cancelamento` varchar(1000) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
+  `valor_cobrado` decimal(10,2) DEFAULT NULL,
+  `interrompido_em` datetime DEFAULT NULL,
+  `interrompido_por` bigint unsigned DEFAULT NULL,
+  `motivo_interrupcao` varchar(1000) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `fk_itens_servico_pedido` (`pedido_id`),
   KEY `fk_itens_servico_servico` (`servico_id`),
   KEY `fk_item_servico_cancelado_por_idx` (`cancelado_por`),
+  KEY `fk_item_servico_interrompido_por` (`interrompido_por`),
+  KEY `fk_item_servico_autorizacao_por` (`autorizacao_por`),
+  CONSTRAINT `fk_item_servico_autorizacao_por` FOREIGN KEY (`autorizacao_por`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `fk_item_servico_cancelado_por` FOREIGN KEY (`cancelado_por`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
+  CONSTRAINT `fk_item_servico_interrompido_por` FOREIGN KEY (`interrompido_por`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `fk_itens_servico_pedido` FOREIGN KEY (`pedido_id`) REFERENCES `pedidos` (`id`),
   CONSTRAINT `fk_itens_servico_servico` FOREIGN KEY (`servico_id`) REFERENCES `servicos` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=17 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=24 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -314,6 +337,7 @@ CREATE TABLE `pedidos` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `status` enum('ABERTO','EM_EXECUCAO','CONCLUIDO','CANCELADO') NOT NULL,
   `total` decimal(10,2) NOT NULL,
+  `total_orcamento` decimal(10,2) NOT NULL DEFAULT '0.00',
   `user_id` bigint unsigned DEFAULT NULL,
   `cliente_id` bigint unsigned DEFAULT NULL,
   `usuario_id` bigint unsigned DEFAULT NULL,
@@ -336,7 +360,7 @@ CREATE TABLE `pedidos` (
   CONSTRAINT `fk_pedidos_operador` FOREIGN KEY (`usuario_id`) REFERENCES `users` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `fk_pedidos_users1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
   CONSTRAINT `fk_pedidos_veiculos1` FOREIGN KEY (`veiculo_id`) REFERENCES `veiculos` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=25 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -472,7 +496,7 @@ CREATE TABLE `veiculos` (
   KEY `fk_veiculos_clientes_idx` (`cliente_id`),
   CONSTRAINT `fk_veiculos_clientes` FOREIGN KEY (`cliente_id`) REFERENCES `clientes` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `fk_veiculos_users1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
@@ -484,4 +508,4 @@ CREATE TABLE `veiculos` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-11-04 17:07:37
+-- Dump completed on 2026-11-04 21:01:18
