@@ -10,6 +10,9 @@ use App\Http\Controllers\PedidoController;
 use App\Http\Controllers\AgendamentoController;
 use App\Http\Middleware\VerificarAdministrador;
 use App\Models\Produto;
+use App\Models\Agendamento;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -17,25 +20,70 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::get('/dashboard', function () {
+Route::get('/dashboard', function (Request $request) {
     $produtosEstoqueBaixo = null;
+    $agendamentosPainel = null;
+
+    $periodoAgenda = $request->query('periodo_agenda', 'dia');
+
+    if (!in_array($periodoAgenda, ['dia', 'semana', 'mes'], true)) {
+        $periodoAgenda = 'dia';
+    }
+
+    $hoje = Carbon::now('America/Sao_Paulo');
+
+    $inicioAgenda = $hoje->copy()->startOfDay();
+    $fimAgenda = $hoje->copy()->endOfDay();
+
+    if ($periodoAgenda === 'semana') {
+        $inicioAgenda = $hoje->copy()->startOfWeek(Carbon::MONDAY);
+        $fimAgenda = $inicioAgenda->copy()->addDays(6)->endOfDay();
+    } elseif ($periodoAgenda === 'mes') {
+        $inicioAgenda = $hoje->copy()->startOfMonth()->startOfDay();
+        $fimAgenda = $hoje->copy()->endOfMonth()->endOfDay();
+    }
 
     if (in_array(Auth::user()->role, ['ADM', 'FUNC'], true)) {
-        $produtosEstoqueBaixo = Produto::whereColumn('estoque', '<=', 'estoque_minimo')
-            ->orderBy('estoque')
+        $produtosEstoqueBaixo = Produto::whereColumn(
+            'estoque',
+            '<=',
+            'estoque_minimo'
+        )->orderBy('estoque')
             ->orderBy('nome')
             ->orderBy('id')
             ->paginate(10, ['*'], 'estoque_page')
             ->withQueryString();
+
+        $agendamentosPainel = Agendamento::with(['veiculo', 'cliente'])
+            ->whereBetween('data_hora', [
+                $inicioAgenda->format('Y-m-d H:i:s'),
+                $fimAgenda->format('Y-m-d H:i:s'),
+            ])
+            ->orderBy('data_hora')
+            ->orderBy('id')
+            ->paginate(5, ['*'], 'agenda_page')
+            ->withQueryString()
+            ->fragment('agenda-painel');
     }
 
-    return view('dashboard', compact('produtosEstoqueBaixo'));
+    return view('dashboard', compact(
+        'produtosEstoqueBaixo',
+        'agendamentosPainel',
+        'periodoAgenda',
+        'inicioAgenda',
+        'fimAgenda'
+    ));
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::get('/profile', [ProfileController::class, 'edit'])
+        ->name('profile.edit');
+
+    Route::patch('/profile', [ProfileController::class, 'update'])
+        ->name('profile.update');
+
+    Route::delete('/profile', [ProfileController::class, 'destroy'])
+        ->name('profile.destroy');
 
     Route::middleware(VerificarAdministrador::class)->group(function () {
         Route::resource('categorias', CategoriaController::class);
@@ -47,7 +95,6 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::resource('agendamentos', AgendamentoController::class);
-
     Route::resource('veiculos', VeiculosController::class);
     Route::resource('clientes', ClienteController::class);
 

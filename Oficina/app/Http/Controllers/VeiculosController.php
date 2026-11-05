@@ -139,7 +139,15 @@ class VeiculosController extends Controller
 
         $veiculo = Veiculos::with('cliente')->findOrFail($id);
 
-        return view('veiculos.show', compact('veiculo'));
+        $historicoServicos = $veiculo->servicosRealizados()
+            ->with(['servico', 'pedido'])
+            ->orderByDesc('pedidos.concluido_em')
+            ->orderByDesc('pedidos.id')
+            ->orderByDesc('itens_servico.id')
+            ->paginate(10, ['itens_servico.*'], 'historico_page')
+            ->withQueryString();
+
+        return view('veiculos.show', compact('veiculo', 'historicoServicos'));
     }
 
     /**
@@ -251,6 +259,11 @@ class VeiculosController extends Controller
             'marca' => ['nullable', 'string', 'max:100'],
             'modelo' => ['nullable', 'string', 'max:100'],
             'ano' => ['nullable', 'integer', 'between:1886,2100'],
+            'quilometragem_informada' => ['nullable', 'integer', 'min:0', 'max:4294967295'],
+            'oleo_data_informada' => ['nullable', 'date_format:Y-m-d', 'before_or_equal:' . now('America/Sao_Paulo')->toDateString()],
+            'oleo_km_informado' => ['nullable', 'integer', 'min:0', 'max:4294967295'],
+            'revisao_data_informada' => ['nullable', 'date_format:Y-m-d', 'before_or_equal:' . now('America/Sao_Paulo')->toDateString()],
+            'revisao_km_informado' => ['nullable', 'integer', 'min:0', 'max:4294967295'],
             'cliente_id' => [
                 'nullable',
                 'integer',
@@ -265,9 +278,26 @@ class VeiculosController extends Controller
             'ano.between' => 'Informe um ano entre 1886 e 2100.',
             'cliente_id.integer' => 'Selecione um cliente válido.',
             'cliente_id.exists' => 'Selecione um cliente cadastrado.',
+            'quilometragem_informada.integer' => 'A quilometragem deve ser um número inteiro.',
+            'quilometragem_informada.min' => 'A quilometragem não pode ser negativa.',
+            'quilometragem_informada.max' => 'A quilometragem ultrapassa o limite permitido.',
+            'oleo_data_informada.date_format' => 'Informe uma data válida no formato dia/mês/ano.',
+            'oleo_data_informada.before_or_equal' => 'A data da manutenção não pode estar no futuro.',
+            'oleo_km_informado.integer' => 'A quilometragem deve ser um número inteiro.',
+            'oleo_km_informado.min' => 'A quilometragem não pode ser negativa.',
+            'oleo_km_informado.max' => 'A quilometragem ultrapassa o limite permitido.',
+            'revisao_data_informada.date_format' => 'Informe uma data válida no formato dia/mês/ano.',
+            'revisao_data_informada.before_or_equal' => 'A data da manutenção não pode estar no futuro.',
+            'revisao_km_informado.integer' => 'A quilometragem deve ser um número inteiro.',
+            'revisao_km_informado.min' => 'A quilometragem não pode ser negativa.',
+            'revisao_km_informado.max' => 'A quilometragem ultrapassa o limite permitido.',
         ]);
 
         $dados['cliente_id'] = $dados['cliente_id'] ?? null;
+
+        foreach (['quilometragem_informada', 'oleo_data_informada', 'oleo_km_informado', 'revisao_data_informada', 'revisao_km_informado'] as $campo) {
+            $dados[$campo] = $dados[$campo] ?? null;
+        }
 
         return $dados;
     }

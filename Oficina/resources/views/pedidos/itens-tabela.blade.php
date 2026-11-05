@@ -30,6 +30,23 @@ $listasItens = [
 ];
 @endphp
 
+@if(!$imprimindoItens && in_array($pedido->status, ['ABERTO', 'EM_EXECUCAO'], true))
+@php
+$pecasAguardandoReposicao = $pedido->itens->filter(fn ($item) => $item->quantidade_pendente > 0);
+@endphp
+@if($pecasAguardandoReposicao->isNotEmpty())
+<div class="alert alert-warning" role="alert">
+    <p class="fw-bold mb-2">Peças aguardando reposição</p>
+    <ul class="mb-2">
+        @foreach($pecasAguardandoReposicao as $pecaPendente)
+        <li>{{ $pecaPendente->produto?->nome ?? 'Peça não encontrada' }}: {{ $pecaPendente->quantidade_reservada }} de {{ $pecaPendente->quantidade }} reservada(s); faltam {{ $pecaPendente->quantidade_pendente }}.</li>
+        @endforeach
+    </ul>
+    <p class="mb-0">O orçamento pode continuar salvo. A execução dessas peças será liberada quando a quantidade estiver totalmente reservada. Após atualizar o estoque, recarregue esta tela para conferir.</p>
+</div>
+@endif
+@endif
+
 @if($editandoItens)
 <form id="iniciar-lote" method="POST" action="{{ route('pedidos.itens.autorizar-iniciar', $pedido->id) }}" data-acao-item data-lote>
     @csrf
@@ -118,6 +135,15 @@ $listasItens = [
                 <td>
                     <strong>{{ $peca ? 'Peça' : 'Serviço' }}</strong>
                     <div>{{ $peca ? ($item->produto?->nome ?? 'Peça não encontrada') : ($item->servico?->nome ?? 'Serviço não encontrado') }}</div>
+
+                    @if(!$imprimindoItens && $peca && $pendente && $item->autorizacao !== 'RECUSADO' && in_array($pedido->status, ['ABERTO', 'EM_EXECUCAO'], true))
+                    <div class="small mt-2">
+                        <span class="badge {{ $item->quantidade_pendente > 0 ? 'bg-warning text-dark' : 'bg-success' }}">Reservado: {{ $item->quantidade_reservada }} de {{ $item->quantidade }}</span>
+                        @if($item->quantidade_pendente > 0)
+                        <span class="d-block text-muted mt-1">Aguardando reposição: {{ $item->quantidade_pendente }}</span>
+                        @endif
+                    </div>
+                    @endif
 
                     @if($cancelado)
                     <div class="small mt-2">

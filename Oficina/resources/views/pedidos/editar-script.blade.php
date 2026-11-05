@@ -373,15 +373,6 @@
                 return;
             }
 
-            const temItens = grupos.some(grupo => grupo.itens.size > 0);
-
-            const temFotos = [...formulario.querySelectorAll('[data-foto-entrada]')]
-                .some(campo => campo.files.length > 0);
-
-            if (formulario.elements.namedItem('status')?.value === 'CANCELADO' && (temItens || temFotos)) {
-                evento.preventDefault();
-                informar('Salve as inclusões antes de cancelar, ou remova-as do formulário.');
-            }
         });
 
         formulario.querySelectorAll('[data-foto-entrada]').forEach(campo => {
@@ -497,7 +488,7 @@
 
                     alvo = marcados[0].closest('tr');
                     mensagem = finalizando
-                        ? `Confirma que os ${marcados.length} trabalhos selecionados foram executados? Esta ação não encerra a OS.`
+                        ? `Confirma que os ${marcados.length} trabalhos selecionados foram executados? A OS será concluída automaticamente se não houver outros itens a resolver.`
                         : `Confirma que o cliente liberou os ${marcados.length} itens selecionados para execução? Eles serão autorizados e iniciados, com baixa no estoque das peças.`;
                 }
 
@@ -534,8 +525,9 @@
                 );
 
                 if (recuperados || assinaturaFormulario() !== assinaturaInicial || temNovosItens || temFotos || outrasQuantidades) {
-                    mensagem = 'Existem alterações da OS ainda não salvas. Continuar descartará essas alterações.'
-                        + (mensagem ? '\n\n' + mensagem : '\nDeseja continuar?');
+                    evento.preventDefault();
+                    informar('Salve primeiro as alterações da OS e das quantidades antes de usar os botões dos itens. Seu preenchimento foi mantido.');
+                    return;
                 }
 
                 if (mensagem && !confirm(mensagem)) {

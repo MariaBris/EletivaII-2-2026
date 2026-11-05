@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 
 class ItemPedido extends Model
 {
@@ -10,6 +11,7 @@ class ItemPedido extends Model
 
     protected $fillable = [
         'quantidade',
+        'quantidade_reservada',
         'preco',
         'pedido_id',
         'produto_id',
@@ -30,6 +32,7 @@ class ItemPedido extends Model
 
     protected $casts = [
         'quantidade' => 'integer',
+        'quantidade_reservada' => 'integer',
         'preco' => 'decimal:2',
         'autorizacao_em' => 'datetime',
         'estoque_baixado' => 'boolean',
@@ -38,6 +41,30 @@ class ItemPedido extends Model
         'quantidade_devolvida' => 'integer',
         'interrompido_em' => 'datetime',
     ];
+
+    public function scopeReservaveis(Builder $consulta): Builder
+    {
+        return $consulta->where('itens_pedido.situacao', 'PENDENTE')
+            ->whereIn('itens_pedido.autorizacao', ['AGUARDANDO', 'AUTORIZADO'])
+            ->where('itens_pedido.estoque_baixado', false)
+            ->where('itens_pedido.quantidade', '>', 0)
+            ->whereHas('pedido', function ($pedidos) {
+                $pedidos->whereIn('status', ['ABERTO', 'EM_EXECUCAO']);
+            });
+    }
+
+    public function getQuantidadePendenteAttribute(): int
+    {
+        if (
+            $this->situacao !== 'PENDENTE'
+            || $this->autorizacao === 'RECUSADO'
+            || $this->estoque_baixado
+        ) {
+            return 0;
+        }
+
+        return max(0, $this->quantidade - $this->quantidade_reservada);
+    }
 
     public function pedido()
     {

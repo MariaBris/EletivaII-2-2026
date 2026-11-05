@@ -10,7 +10,7 @@ use App\Models\Veiculos;
 use App\Models\FotoEntrada;
 use App\Models\ItemPedido;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use App\Services\ReservaEstoque;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -151,7 +151,7 @@ class PedidoController extends Controller
         }
 
         $veiculos = Veiculos::with('cliente')->orderBy('placa')->get();
-        $produtos = Produto::orderBy('nome')->get();
+        $produtos = Produto::comReservas()->orderBy('nome')->get();
         $servicos = Servico::orderBy('nome')->get();
 
         return view('pedidos.create', compact('veiculos', 'produtos', 'servicos', 'agendamento'));
@@ -168,7 +168,7 @@ class PedidoController extends Controller
         $fotos = $this->guardarFotos($request);
 
         try {
-            $pedido = DB::transaction(function () use ($dados, $request, $fotos) {
+            $pedido = ReservaEstoque::transacao(function () use ($dados, $request, $fotos) {
                 $veiculo = Veiculos::lockForUpdate()
                     ->findOrFail($dados['veiculo_id']);
 
@@ -282,7 +282,7 @@ class PedidoController extends Controller
             'checklistItens.conferente',
         ])->findOrFail($id);
 
-        $produtos = Produto::orderBy('nome')->get();
+        $produtos = Produto::comReservas()->orderBy('nome')->get();
         $servicos = Servico::orderBy('nome')->get();
 
         return view('pedidos.edit', compact('pedido', 'produtos', 'servicos'));
@@ -299,8 +299,9 @@ class PedidoController extends Controller
         $fotos = $this->guardarFotos($request);
 
         try {
-            DB::transaction(function () use ($request, $id, $dados, $fotos) {
+            $concluidaAutomaticamente = ReservaEstoque::transacao(function () use ($request, $id, $dados, $fotos) {
                 $pedido = Pedido::lockForUpdate()->findOrFail($id);
+                $dados['status'] = $pedido->status;
 
                 $encerrada = in_array(
                     $pedido->status,
@@ -371,11 +372,10 @@ class PedidoController extends Controller
                 $pedido->responsavel = $dados['responsavel'] ?? null;
                 $pedido->observacoes = $dados['observacoes'] ?? null;
 
-                $this->aplicarAndamento(
-                    $pedido,
-                    $dados['status'],
-                    $request->user()->id
-                );
+                // Todos os dados, fotos e checklist já foram gravados nesta transação.
+                $this->sincronizarAndamento($pedido, $request->user()->id);
+
+                return !$encerrada && $pedido->status === 'CONCLUIDO';
             }, 3);
         } catch (\Throwable $erro) {
             Storage::disk('local')->delete(array_values($fotos));
@@ -384,7 +384,9 @@ class PedidoController extends Controller
         }
 
         return redirect()->route('pedidos.show', $id)
-            ->with('mensagem', 'Ordem de serviço atualizada com sucesso!');
+            ->with('mensagem', $concluidaAutomaticamente
+                ? 'OS atualizada e concluída automaticamente. Todos os trabalhos foram resolvidos!'
+                : 'Ordem de serviço atualizada com sucesso!');
     }
 
     /**
@@ -394,7 +396,7 @@ class PedidoController extends Controller
     {
         $this->autorizarAcesso($request);
 
-        DB::transaction(function () use ($request, $id) {
+        ReservaEstoque::transacao(function () use ($request, $id) {
             $pedido = Pedido::lockForUpdate()->findOrFail($id);
 
             $this->aplicarAndamento(
@@ -414,7 +416,7 @@ class PedidoController extends Controller
 
         $dados = $this->validarSelecao($request);
 
-        $produtosBaixados = DB::transaction(function () use ($request, $id, $dados) {
+        $produtosBaixados = ReservaEstoque::transacao(function () use ($request, $id, $dados) {
             $pedido = Pedido::lockForUpdate()->findOrFail($id);
 
             $this->exigirOsAberta($pedido);
@@ -445,7 +447,7 @@ class PedidoController extends Controller
         $this->autorizarAcesso($request);
         $dados = $this->validarSelecao($request);
 
-        DB::transaction(function () use ($id, $dados) {
+        $concluida = ReservaEstoque::transacao(function () use ($request, $id, $dados) {
             $pedido = Pedido::lockForUpdate()->findOrFail($id);
             $this->exigirOsAberta($pedido);
             $registros = $this->carregarSelecionados($pedido, $dados['selecionados']);
@@ -464,11 +466,16 @@ class PedidoController extends Controller
             }
 
             $this->recalcularTotais($pedido);
-            $pedido->save();
+            $this->atualizarIndicadorEstoque($pedido);
+            $this->sincronizarAndamento($pedido, $request->user()->id);
+
+            return $pedido->status === 'CONCLUIDO';
         }, 3);
 
-        return redirect()->route('pedidos.edit', $id)
-            ->with('mensagem', 'Trabalhos selecionados marcados como executados! A OS permanece aberta para conferência.');
+        return redirect()->route($concluida ? 'pedidos.show' : 'pedidos.edit', $id)
+            ->with('mensagem', $concluida
+                ? 'Trabalhos executados e OS concluída automaticamente!'
+                : 'Trabalhos selecionados marcados como executados. A OS ainda possui itens a resolver.');
     }
 
     public function atualizarItem(Request $request, string $id, string $tipo, string $item)
@@ -547,7 +554,7 @@ class PedidoController extends Controller
             'quantidade' => 'quantidade',
         ]);
 
-        $produtosBaixados = DB::transaction(function () use ($request, $id, $tipo, $item, $dados) {
+        $resultado = ReservaEstoque::transacao(function () use ($request, $id, $tipo, $item, $dados) {
             $pedido = Pedido::lockForUpdate()->findOrFail($id);
 
             $this->exigirOsAberta($pedido);
@@ -619,18 +626,25 @@ class PedidoController extends Controller
             $this->recalcularTotais($pedido);
             $this->atualizarIndicadorEstoque($pedido);
 
-            $pedido->save();
+            $this->sincronizarAndamento($pedido, $request->user()->id);
 
-            return $produtosBaixados;
+            return [
+                'produtos' => $produtosBaixados,
+                'concluida' => $pedido->status === 'CONCLUIDO',
+            ];
         }, 3);
 
         $mensagem = $dados['acao'] === 'alterar_quantidade'
             ? 'Quantidade atualizada. Se houve alteração, o item voltou a aguardar autorização.'
             : 'Item atualizado com sucesso!';
 
-        return redirect()->route('pedidos.edit', $id)
+        if ($resultado['concluida']) {
+            $mensagem .= ' OS concluída automaticamente!';
+        }
+
+        return redirect()->route($resultado['concluida'] ? 'pedidos.show' : 'pedidos.edit', $id)
             ->with('mensagem', $mensagem)
-            ->with('alertas_estoque', $this->alertasEstoque($produtosBaixados));
+            ->with('alertas_estoque', $this->alertasEstoque($resultado['produtos']));
     }
 
     public function foto(Request $request, string $id, string $foto)
@@ -834,6 +848,8 @@ class PedidoController extends Controller
 
     private function iniciarRegistros(Pedido $pedido, $registros): array
     {
+        ReservaEstoque::conferirInicio($registros);
+
         $quantidades = [];
 
         foreach ($registros as $registro) {
@@ -882,6 +898,7 @@ class PedidoController extends Controller
 
             if ($registro instanceof ItemPedido) {
                 $registro->estoque_baixado = true;
+                $registro->quantidade_reservada = 0;
             }
 
             $registro->save();
@@ -952,12 +969,6 @@ class PedidoController extends Controller
                 'required',
                 'integer',
                 'exists:veiculos,id',
-            ];
-        } else {
-            $regras['status'] = [
-                'required',
-                'string',
-                'in:ABERTO,EM_EXECUCAO,CONCLUIDO,CANCELADO',
             ];
         }
 
@@ -1181,6 +1192,42 @@ class PedidoController extends Controller
         $pedido->save();
     }
 
+    private function sincronizarAndamento(Pedido $pedido, $usuarioId): void
+    {
+        // Os chamadores já mantêm a OS bloqueada dentro da transação.
+        if (in_array($pedido->status, ['CONCLUIDO', 'CANCELADO'], true)) {
+            $pedido->save();
+            return;
+        }
+
+        $registros = $pedido->itens()->where('situacao', '!=', 'CANCELADO')->get()
+            ->concat($pedido->servicos()->where('situacao', '!=', 'CANCELADO')->get());
+
+        $aguardando = $registros->contains(fn ($item) => $item->autorizacao === 'AGUARDANDO');
+        $autorizados = $registros->where('autorizacao', 'AUTORIZADO');
+
+        $todosResolvidos = $autorizados->isNotEmpty()
+            && $autorizados->every(fn ($item) => in_array($item->situacao, ['EXECUTADO', 'INTERROMPIDO'], true));
+
+        if (!$aguardando && $todosResolvidos) {
+            // Reutiliza as conferências existentes e grava concluido_em uma única vez.
+            $this->aplicarAndamento($pedido, 'CONCLUIDO', $usuarioId);
+            return;
+        }
+
+        $iniciada = $registros->contains(fn ($item) => in_array(
+            $item->situacao,
+            ['EM_EXECUCAO', 'EXECUTADO', 'INTERROMPIDO'],
+            true
+        ));
+
+        if ($iniciada) {
+            $pedido->status = 'EM_EXECUCAO';
+        }
+
+        $pedido->save();
+    }
+
     private function conferirAndamento(Pedido $pedido, string $novoStatus)
     {
         if (
@@ -1295,6 +1342,9 @@ class PedidoController extends Controller
 
             $this->recalcularTotais($pedido);
             $this->atualizarIndicadorEstoque($pedido);
+
+            // Registra somente na transição para concluído, após todas as conferências.
+            $pedido->concluido_em = now();
         }
 
         $pedido->status = $novoStatus;

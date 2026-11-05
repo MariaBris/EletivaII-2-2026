@@ -20,6 +20,7 @@ class Pedido extends Model
         'combustivel_entrada',
         'avarias_entrada',
         'saida_em',
+        'concluido_em',
         'responsavel',
         'observacoes',
         'estoque_baixado',
@@ -30,6 +31,7 @@ class Pedido extends Model
         'total_orcamento' => 'decimal:2',
         'quilometragem_entrada' => 'integer',
         'saida_em' => 'datetime',
+        'concluido_em' => 'datetime',
         'estoque_baixado' => 'boolean',
     ];
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Produto;
 use App\Models\Categoria;
+use App\Services\ReservaEstoque;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
@@ -35,7 +36,7 @@ class ProdutoController extends Controller
         $dados = $validacao->validated();
         $busca = trim($dados['busca'] ?? '');
 
-        $consulta = Produto::with('categoria'); // Prepara a consulta dos produtos com suas categorias
+        $consulta = Produto::with('categoria')->comReservas(); // Prepara a consulta dos produtos com suas categorias
 
         if ($busca !== '') {
             $consulta->where(function ($consultaBusca) use ($busca) {
@@ -74,7 +75,7 @@ class ProdutoController extends Controller
 
         $dados = $this->prepararImagem($request, $dados);
 
-        $produto = Produto::create($dados); // Grava o novo produto no banco de dados
+        $produto = ReservaEstoque::transacao(fn () => Produto::create($dados)); // Grava o novo produto no banco de dados
 
         return redirect()->route('produtos.index')
             ->with('mensagem', "O produto '{$produto->nome}' foi inserido com sucesso!");
@@ -85,7 +86,7 @@ class ProdutoController extends Controller
      */
     public function show(string $id)
     {
-        $produto = Produto::with('categoria')->findOrFail($id); // Procura o produto pelo ID ou mostra erro 404 se não encontrar
+        $produto = Produto::with('categoria')->comReservas()->findOrFail($id); // Procura o produto pelo ID ou mostra erro 404 se não encontrar
 
         return view('produtos.show', compact('produto')); // Retorna a tela de consulta/exclusão
     }
@@ -95,7 +96,7 @@ class ProdutoController extends Controller
      */
     public function edit(string $id)
     {
-        $produto = Produto::findOrFail($id); // Encontra o produto que vai ser editado
+        $produto = Produto::comReservas()->findOrFail($id); // Encontra o produto que vai ser editado
         $categorias = Categoria::all(); // Busca as categorias para o select continuar funcional na edição
 
         return view('produtos.edit', compact('produto', 'categorias')); // Abre o formulário de edição com os dados atuais
@@ -111,8 +112,15 @@ class ProdutoController extends Controller
 
         $dados = $this->prepararImagem($request, $dados);
 
-        // Executa a atualização no banco de dados com os dados tratados
-        if ($produto->update($dados)) {
+        // Executa a atualização e completa as reservas que aguardavam reposição.
+        $alterado = ReservaEstoque::transacao(function () use ($id, $dados) {
+            $produto = Produto::lockForUpdate()->findOrFail($id);
+
+            return $produto->update($dados) ? $produto : null;
+        });
+
+        if ($alterado) {
+            $produto = $alterado;
             return redirect()->route('produtos.index')
                 ->with('mensagem', "O produto '{$produto->nome}' foi alterado com sucesso!");
         }
@@ -132,7 +140,11 @@ class ProdutoController extends Controller
         $nomeProduto = $produto->nome; // Guarda o nome para exibir na mensagem de sucesso após a exclusão
 
         try {
-            if (!$produto->delete()) { // Executa a exclusão do registo
+            $excluido = ReservaEstoque::transacao(function () use ($id) {
+                return Produto::lockForUpdate()->findOrFail($id)->delete();
+            });
+
+            if (!$excluido) { // Executa a exclusão do registo
                 return redirect()->route('produtos.index')
                     ->with('erro', 'Não foi possível excluir o produto.');
             }

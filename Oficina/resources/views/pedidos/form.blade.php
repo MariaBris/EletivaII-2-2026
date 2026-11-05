@@ -17,12 +17,7 @@ foreach ($grupos as $tipo => $grupo) {
 $anteriores[$tipo] = is_array(old($tipo)) ? old($tipo) : [];
 }
 $andamentos = ['ABERTO' => 'Aberto', 'EM_EXECUCAO' => 'Em execução', 'CONCLUIDO' => 'Concluído', 'CANCELADO' => 'Cancelado'];
-$opcoesPorStatus = [
-'ABERTO' => ['ABERTO', 'CONCLUIDO', 'CANCELADO'],
-'EM_EXECUCAO' => ['EM_EXECUCAO', 'CONCLUIDO', 'CANCELADO'],
-'CONCLUIDO' => ['CONCLUIDO'],
-'CANCELADO' => ['CANCELADO'],
-];
+
 @endphp
 
 @if(!$consulta)
@@ -116,13 +111,8 @@ $opcoesPorStatus = [
 
             @if($edicao)
             <div class="mb-3">
-                <label for="status" class="form-label">Andamento</label>
-                <select id="status" name="status" class="form-select" required>
-                    @foreach($opcoesPorStatus[$pedido->status] ?? [$pedido->status] as $status)
-                    <option value="{{ $status }}" @selected(old('status', $pedido->status) === $status)>{{ $andamentos[$status] ?? $status }}</option>
-                    @endforeach
-                </select>
-                <p class="form-text mb-0">A execução começa pelo botão Iniciar selecionados. Para concluir, registre as decisões do cliente e encerre os trabalhos autorizados.</p>
+                <p class="mb-1"><strong>Andamento:</strong> <span class="badge bg-secondary">{{ $andamentos[$pedido->status] ?? $pedido->status }}</span></p>
+                <p class="form-text mb-0">O andamento é automático. A OS será concluída quando todos os trabalhos autorizados estiverem executados ou interrompidos e não houver itens aguardando decisão. Salve alterações antes de usar os botões dos itens.</p>
             </div>
 
             @else
@@ -331,7 +321,7 @@ $opcoesPorStatus = [
                 <select id="{{ $tipo }}-selecao" class="form-select" data-selecao>
                     <option value="">Selecione...</option>
                     @foreach($grupo['itens'] as $item)
-                    <option value="{{ $item->id }}" data-nome="{{ $item->nome }}" data-preco="{{ $item->preco }}">{{ $item->nome }} — R$ {{ number_format($item->preco, 2, ',', '.') }}@if(in_array($tipo, ['produtos', 'novos_produtos'], true)) — Estoque: {{ $item->estoque }}@endif</option>
+                    <option value="{{ $item->id }}" data-nome="{{ $item->nome }}" data-preco="{{ $item->preco }}">{{ $item->nome }} — R$ {{ number_format($item->preco, 2, ',', '.') }}@if(in_array($tipo, ['produtos', 'novos_produtos'], true)) — Físico: {{ $item->estoque }} · Reservado: {{ $item->estoque_reservado }} · Disponível: {{ $item->estoque_disponivel }}@endif</option>
                     @endforeach
                 </select>
             </div>
@@ -369,7 +359,7 @@ $opcoesPorStatus = [
 </div>
 @endforeach
 
-<p class="text-muted">Salvar acrescenta os novos itens ao orçamento, aguardando autorização, sem baixar estoque.</p>
+<p class="text-muted">Salvar acrescenta os itens ao orçamento e reserva as peças disponíveis, sem baixar o estoque físico. O que faltar fica aguardando reposição. A baixa acontece ao iniciar.</p>
 @endif
 <template id="modelo-nova-inclusao">
     <tr>
