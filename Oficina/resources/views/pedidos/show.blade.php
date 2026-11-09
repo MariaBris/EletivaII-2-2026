@@ -30,6 +30,10 @@ return in_array($item->situacao, ['EM_EXECUCAO', 'EXECUTADO', 'INTERROMPIDO'], t
 
 $podeCancelar = in_array($pedido->status, ['ABERTO', 'EM_EXECUCAO'], true)
 && !$temTrabalhoIniciado;
+
+$pecasAguardandoReposicao = in_array($pedido->status, ['ABERTO', 'EM_EXECUCAO'], true)
+? $pedido->itens->filter(fn ($item) => $item->quantidade_pendente > 0)
+: collect();
 @endphp
 
 <div class="os-tela">
@@ -56,17 +60,17 @@ $podeCancelar = in_array($pedido->status, ['ABERTO', 'EM_EXECUCAO'], true)
     <div class="alert alert-success" role="status">{{ session('mensagem') }}</div>
     @endif
 
-    @if(session('erro'))
-    <div class="alert alert-danger" role="alert">{{ session('erro') }}</div>
-    @endif
+    @if($pecasAguardandoReposicao->isNotEmpty())
+    <div class="alert alert-warning nao-imprimir" role="alert">
+        <p class="fw-bold mb-2">Peças aguardando reposição</p>
 
-    @if($errors->any())
-    <div class="alert alert-danger" role="alert">
-        <ul class="mb-0">
-            @foreach($errors->all() as $mensagem)
-            <li>{{ $mensagem }}</li>
+        <ul class="mb-2">
+            @foreach($pecasAguardandoReposicao as $pecaPendente)
+            <li>{{ $pecaPendente->produto?->nome ?? 'Peça não encontrada' }}: {{ $pecaPendente->quantidade_reservada }} de {{ $pecaPendente->quantidade }} reservada(s); faltam {{ $pecaPendente->quantidade_pendente }}.</li>
             @endforeach
         </ul>
+
+        <p class="mb-0">O orçamento pode continuar salvo. A execução dessas peças será liberada quando a quantidade estiver totalmente reservada. Após atualizar o estoque, recarregue esta tela para conferir.</p>
     </div>
     @endif
 
@@ -77,6 +81,20 @@ $podeCancelar = in_array($pedido->status, ['ABERTO', 'EM_EXECUCAO'], true)
         <ul class="mb-0">
             @foreach(session('alertas_estoque') as $alerta)
             <li>{{ $alerta['nome'] }} — Estoque: {{ $alerta['estoque'] }}; mínimo: {{ $alerta['estoque_minimo'] }}.</li>
+            @endforeach
+        </ul>
+    </div>
+    @endif
+
+    @if(session('erro'))
+    <div class="alert alert-danger" role="alert">{{ session('erro') }}</div>
+    @endif
+
+    @if($errors->any())
+    <div class="alert alert-danger" role="alert">
+        <ul class="mb-0">
+            @foreach($errors->all() as $mensagem)
+            <li>{{ $mensagem }}</li>
             @endforeach
         </ul>
     </div>
@@ -132,37 +150,38 @@ $podeCancelar = in_array($pedido->status, ['ABERTO', 'EM_EXECUCAO'], true)
     </div>
 
     <div class="card border-0 shadow-sm mb-4 nao-imprimir">
-    <div class="card-body p-4">
-        <h2 class="h5 mb-3">Fotos de entrada</h2>
+        <div class="card-body p-4">
+            <h2 class="h5 mb-3">Fotos de entrada</h2>
 
-        @if($pedido->fotosEntrada->isEmpty())
-        <p class="text-muted mb-0">Esta OS não possui fotos de entrada registradas.</p>
-        @else
-        <div class="row g-3">
-            @foreach(App\Models\FotoEntrada::POSICOES as $posicao => $titulo)
-            @php
-            $foto = $pedido->fotosEntrada->firstWhere('posicao', $posicao);
-            @endphp
+            @if($pedido->fotosEntrada->isEmpty())
+            <p class="text-muted mb-0">Esta OS não possui fotos de entrada registradas.</p>
+            @else
+            <div class="row g-3">
+                @foreach(App\Models\FotoEntrada::POSICOES as $posicao => $titulo)
+                @php
+                $foto = $pedido->fotosEntrada->firstWhere('posicao', $posicao);
+                @endphp
 
-            <div class="col-12 col-md-6">
-                <h3 class="h6">{{ $titulo }}</h3>
+                <div class="col-12 col-md-6">
+                    <h3 class="h6">{{ $titulo }}</h3>
 
-                @if($foto)
-                <a href="{{ route('pedidos.fotos.show', ['id' => $pedido->id, 'foto' => $foto->id]) }}" target="_blank" rel="noopener"><img src="{{ route('pedidos.fotos.show', ['id' => $pedido->id, 'foto' => $foto->id]) }}" alt="{{ $titulo }} do veículo na entrada da OS {{ $pedido->id }}" class="img-fluid rounded border" style="width: 100%; max-height: 250px; object-fit: contain;" loading="lazy"></a>
-                <p class="form-text mb-0">Registrada em {{ $foto->created_at?->format('d/m/Y H:i') }} por {{ $foto->operador?->name ?? 'Não informado' }}.</p>
-                @else
-                <p class="text-muted">Foto não registrada.</p>
-                @endif
+                    @if($foto)
+                    <a href="{{ route('pedidos.fotos.show', ['id' => $pedido->id, 'foto' => $foto->id]) }}" target="_blank" rel="noopener"><img src="{{ route('pedidos.fotos.show', ['id' => $pedido->id, 'foto' => $foto->id]) }}" alt="{{ $titulo }} do veículo na entrada da OS {{ $pedido->id }}" class="img-fluid rounded border" style="width: 100%; max-height: 250px; object-fit: contain;" loading="lazy"></a>
+                    <p class="form-text mb-0">Registrada em {{ $foto->created_at?->format('d/m/Y H:i') }} por {{ $foto->operador?->name ?? 'Não informado' }}.</p>
+                    @else
+                    <p class="text-muted">Foto não registrada.</p>
+                    @endif
+                </div>
+                @endforeach
             </div>
-            @endforeach
+            @endif
         </div>
-        @endif
     </div>
-</div>
 
     @include('pedidos.form', ['consulta' => true])
 
     <h2 class="h5">Orçamento e trabalhos registrados</h2>
+
     @include('pedidos.itens-tabela', ['modo' => 'consultar'])
 
     <div class="card border-0 shadow-sm mt-4">
@@ -173,5 +192,4 @@ $podeCancelar = in_array($pedido->status, ['ABERTO', 'EM_EXECUCAO'], true)
         </div>
     </div>
 </div>
-
 @endsection

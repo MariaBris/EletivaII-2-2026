@@ -1,0 +1,97 @@
+.cabecalho-impressao-global {
+    display: none;
+}
+
+.cabecalho-impressao {
+    display: grid;
+    grid-template-columns: 75px minmax(0, 1fr) 110px;
+    align-items: center;
+    gap: 12px;
+    margin: 0 0 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #333;
+    color: #000;
+    font-family: Arial, sans-serif;
+    break-inside: avoid;
+}
+
+.cabecalho-impressao .cabecalho-impressao-logo {
+    width: 75px;
+    max-height: 85px;
+    object-fit: contain;
+}
+
+.cabecalho-impressao .cabecalho-impressao-dados {
+    min-width: 0;
+    text-align: center;
+    overflow-wrap: anywhere;
+}
+
+.cabecalho-impressao .cabecalho-impressao-dados h2 {
+    margin: 0 0 3px;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.15;
+}
+
+.cabecalho-impressao .cabecalho-impressao-dados p {
+    margin: 0 0 2px;
+    font-size: 11px;
+    line-height: 1.15;
+}
+
+.cabecalho-impressao .cabecalho-impressao-endereco {
+    white-space: pre-line;
+}
+
+.cabecalho-impressao .cabecalho-impressao-subtitulo {
+    font-weight: 700;
+}
+
+.cabecalho-impressao .cabecalho-impressao-identificacao {
+    text-align: right;
+    font-size: 11px;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+}
+
+@media print {
+    .cabecalho-impressao-global {
+        display: block !important;
+    }
+
+    .cabecalho-impressao {
+        grid-template-columns: 60px minmax(0, 1fr) 100px;
+        gap: 8px;
+        margin-bottom: 6px;
+        padding-bottom: 5px;
+    }
+
+    .cabecalho-impressao .cabecalho-impressao-logo {
+        width: 60px;
+        max-height: 19mm;
+    }
+
+    .cabecalho-impressao .cabecalho-impressao-dados h2 {
+        font-size: 13px;
+    }
+
+    .cabecalho-impressao .cabecalho-impressao-dados p {
+        font-size: 9px;
+    }
+
+    .cabecalho-impressao .cabecalho-impressao-identificacao {
+        font-size: 10px;
+    }
+
+    nav,
+    .navbar,
+    footer,
+    .footer-custom,
+    .nao-imprimir,
+    .barra-acoes,
+    button,
+    .btn {
+        display: none !important;
+    }
+}

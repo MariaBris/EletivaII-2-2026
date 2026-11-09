@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cliente;
+use App\Models\Pedido;
 use App\Models\Veiculos;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -139,15 +141,38 @@ class VeiculosController extends Controller
 
         $veiculo = Veiculos::with('cliente')->findOrFail($id);
 
-        $historicoServicos = $veiculo->servicosRealizados()
-            ->with(['servico', 'pedido'])
-            ->orderByDesc('pedidos.concluido_em')
-            ->orderByDesc('pedidos.id')
-            ->orderByDesc('itens_servico.id')
-            ->paginate(10, ['itens_servico.*'], 'historico_page')
-            ->withQueryString();
+        $validacao = Validator::make($request->query(), [
+            'historico_page' => ['nullable', 'integer', 'min:1'],
+        ], [
+            'historico_page.integer' => 'A página do histórico deve ser um número inteiro.',
+            'historico_page.min' => 'A página do histórico deve ser maior que zero.',
+        ]);
 
-        return view('veiculos.show', compact('veiculo', 'historicoServicos'));
+        if ($validacao->fails()) {
+            return redirect()->route('veiculos.show', $id)
+                ->withErrors($validacao);
+        }
+
+        $executados = function (HasMany $itens): void {
+            $itens->where('autorizacao', 'AUTORIZADO')
+                ->where('situacao', 'EXECUTADO');
+        };
+
+        $historicoPedidos = Pedido::with([
+            'cliente',
+            'itens' => $executados,
+            'itens.produto',
+            'servicos' => $executados,
+            'servicos.servico',
+        ])->where('veiculo_id', $veiculo->id)
+            ->where('status', 'CONCLUIDO')
+            ->orderByDesc('concluido_em')
+            ->orderByDesc('id')
+            ->paginate(10, ['*'], 'historico_page')
+            ->withQueryString()
+            ->fragment('historico-os');
+
+        return view('veiculos.show', compact('veiculo', 'historicoPedidos'));
     }
 
     /**
@@ -295,7 +320,15 @@ class VeiculosController extends Controller
 
         $dados['cliente_id'] = $dados['cliente_id'] ?? null;
 
-        foreach (['quilometragem_informada', 'oleo_data_informada', 'oleo_km_informado', 'revisao_data_informada', 'revisao_km_informado'] as $campo) {
+        foreach (
+            [
+                'quilometragem_informada',
+                'oleo_data_informada',
+                'oleo_km_informado',
+                'revisao_data_informada',
+                'revisao_km_informado',
+            ] as $campo
+        ) {
             $dados[$campo] = $dados[$campo] ?? null;
         }
 

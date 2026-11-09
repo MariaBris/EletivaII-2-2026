@@ -1,0 +1,13 @@
+@page { size: A4; margin: 10mm; }
+@media print {
+    body { background: #fff !important; min-height: auto !important; font-size: 10pt; }
+    nav, header, footer, .navbar, .footer-custom, .nao-imprimir, .btn, button { display: none !important; }
+    .container { width: 100% !important; max-width: 100% !important; padding: 0 !important; }
+    .relatorio .barra-acoes { position: static !important; padding: 0 !important; border: 0 !important; box-shadow: none !important; }
+    .relatorio .card { box-shadow: none !important; }
+    .relatorio .card-body { padding: 8px !important; }
+    .table-responsive { overflow: visible !important; }
+    thead { display: table-header-group; }
+    tr { break-inside: avoid; }
+    a { color: inherit !important; text-decoration: none !important; }
+}

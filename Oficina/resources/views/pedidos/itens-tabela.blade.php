@@ -30,18 +30,21 @@ $listasItens = [
 ];
 @endphp
 
-@if(!$imprimindoItens && in_array($pedido->status, ['ABERTO', 'EM_EXECUCAO'], true))
+@if($editandoItens)
 @php
 $pecasAguardandoReposicao = $pedido->itens->filter(fn ($item) => $item->quantidade_pendente > 0);
 @endphp
+
 @if($pecasAguardandoReposicao->isNotEmpty())
 <div class="alert alert-warning" role="alert">
     <p class="fw-bold mb-2">Peças aguardando reposição</p>
+
     <ul class="mb-2">
         @foreach($pecasAguardandoReposicao as $pecaPendente)
         <li>{{ $pecaPendente->produto?->nome ?? 'Peça não encontrada' }}: {{ $pecaPendente->quantidade_reservada }} de {{ $pecaPendente->quantidade }} reservada(s); faltam {{ $pecaPendente->quantidade_pendente }}.</li>
         @endforeach
     </ul>
+
     <p class="mb-0">O orçamento pode continuar salvo. A execução dessas peças será liberada quando a quantidade estiver totalmente reservada. Após atualizar o estoque, recarregue esta tela para conferir.</p>
 </div>
 @endif
@@ -55,6 +58,7 @@ $pecasAguardandoReposicao = $pedido->itens->filter(fn ($item) => $item->quantida
 
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
     <p class="text-muted mb-0">Selecione os itens. Autorizar e iniciar atua nos pendentes; marcar executados atua nos que estão em execução.</p>
+
     <div class="d-flex flex-wrap gap-2">
         <button type="submit" form="iniciar-lote" data-acao-lote="autorizar-iniciar" class="btn btn-primary" id="botao-iniciar-lote" disabled>Autorizar e iniciar selecionados (0)</button>
         <button type="submit" form="iniciar-lote" formaction="{{ route('pedidos.itens.finalizar-lote', $pedido->id) }}" data-acao-lote="finalizar" class="btn btn-success" id="botao-finalizar-lote" disabled>Marcar selecionados como executados (0)</button>
@@ -97,6 +101,7 @@ $pecasAguardandoReposicao = $pedido->itens->filter(fn ($item) => $item->quantida
             && (!$peca || !$item->estoque_baixado);
 
             $podeIniciar = $pendente && $item->autorizacao === 'AUTORIZADO';
+
             $selecionavel = ($pendente && in_array($item->autorizacao, ['AGUARDANDO', 'AUTORIZADO'], true))
             || $item->situacao === 'EM_EXECUCAO';
 
@@ -139,6 +144,7 @@ $pecasAguardandoReposicao = $pedido->itens->filter(fn ($item) => $item->quantida
                     @if(!$imprimindoItens && $peca && $pendente && $item->autorizacao !== 'RECUSADO' && in_array($pedido->status, ['ABERTO', 'EM_EXECUCAO'], true))
                     <div class="small mt-2">
                         <span class="badge {{ $item->quantidade_pendente > 0 ? 'bg-warning text-dark' : 'bg-success' }}">Reservado: {{ $item->quantidade_reservada }} de {{ $item->quantidade }}</span>
+
                         @if($item->quantidade_pendente > 0)
                         <span class="d-block text-muted mt-1">Aguardando reposição: {{ $item->quantidade_pendente }}</span>
                         @endif
@@ -179,6 +185,7 @@ $pecasAguardandoReposicao = $pedido->itens->filter(fn ($item) => $item->quantida
                         <input id="quantidade-{{ $chave }}" name="quantidade" type="number" class="form-control form-control-sm" min="1" max="1000000" step="1" value="{{ $quantidadeExibida }}" data-quantidade-orcamento data-original="{{ $item->quantidade }}" data-preco="{{ $item->preco }}" data-autorizado="{{ $item->autorizacao === 'AUTORIZADO' ? '1' : '0' }}" data-previa="previa-{{ $alvo }}" required>
                         <button type="submit" class="btn btn-sm btn-outline-dark mt-1">Salvar quantidade</button>
                     </form>
+
                     <p class="form-text mb-0">Alterar a quantidade exige nova autorização.</p>
                     @else
                     {{ $item->quantidade }}
@@ -223,81 +230,82 @@ $pecasAguardandoReposicao = $pedido->itens->filter(fn ($item) => $item->quantida
                             <input type="hidden" name="acao" value="finalizar">
                             <button type="submit" class="btn btn-sm btn-success">Marcar executado</button>
                         </form>
-
                         @endif
 
                         @if($pendente || $item->situacao === 'EM_EXECUCAO')
                         <details @if($recuperarItem) open @endif>
                             <summary class="btn btn-sm btn-outline-secondary">Mais opções</summary>
+
                             <div class="d-flex align-items-start flex-wrap gap-2 mt-2">
                                 @if($pendente)
-                        @foreach([
-                        'autorizar' => ['titulo' => 'Autorizar sem iniciar', 'valor' => 'AUTORIZADO', 'classe' => 'btn-outline-success'],
-                        'recusar' => ['titulo' => 'Recusar', 'valor' => 'RECUSADO', 'classe' => 'btn-outline-danger'],
-                        'aguardar' => ['titulo' => 'Aguardar decisão', 'valor' => 'AGUARDANDO', 'classe' => 'btn-outline-secondary'],
-                        ] as $acao => $opcao)
-                        @if($item->autorizacao !== $opcao['valor'])
-                        <form method="POST" action="{{ $rotaItem }}" data-acao-item data-alvo="{{ $alvo }}">
-                            @csrf
-                            @method('PATCH')
-                            <input type="hidden" name="acao" value="{{ $acao }}">
-                            <button type="submit" class="btn btn-sm {{ $opcao['classe'] }}">{{ $opcao['titulo'] }}</button>
-                        </form>
-                        @endif
-                        @endforeach
-
-                        <details @if($recuperarItem && old('acao')==='cancelar' ) open @endif>
-                            <summary class="btn btn-sm btn-outline-danger">Cancelar item</summary>
-
-                            <form method="POST" action="{{ $rotaItem }}" class="mt-2" data-acao-item data-alvo="{{ $alvo }}" data-confirmacao="Cancelar este item? Ele sairá dos totais e permanecerá no histórico.">
-                                @csrf
-                                @method('PATCH')
-                                <input type="hidden" name="acao" value="cancelar">
-                                <input type="hidden" name="item_retorno" value="{{ $chave }}">
-
-                                <label for="motivo-cancelar-{{ $chave }}" class="form-label">Motivo</label>
-                                <textarea id="motivo-cancelar-{{ $chave }}" name="motivo_cancelamento" class="form-control mb-2" rows="2" maxlength="1000" required>{{ $recuperarItem ? old('motivo_cancelamento') : '' }}</textarea>
-                                <button type="submit" class="btn btn-sm btn-danger">Confirmar cancelamento</button>
-                            </form>
-                        </details>
+                                @foreach([
+                                'autorizar' => ['titulo' => 'Autorizar sem iniciar', 'valor' => 'AUTORIZADO', 'classe' => 'btn-outline-success'],
+                                'recusar' => ['titulo' => 'Recusar', 'valor' => 'RECUSADO', 'classe' => 'btn-outline-danger'],
+                                'aguardar' => ['titulo' => 'Aguardar decisão', 'valor' => 'AGUARDANDO', 'classe' => 'btn-outline-secondary'],
+                                ] as $acao => $opcao)
+                                @if($item->autorizacao !== $opcao['valor'])
+                                <form method="POST" action="{{ $rotaItem }}" data-acao-item data-alvo="{{ $alvo }}">
+                                    @csrf
+                                    @method('PATCH')
+                                    <input type="hidden" name="acao" value="{{ $acao }}">
+                                    <button type="submit" class="btn btn-sm {{ $opcao['classe'] }}">{{ $opcao['titulo'] }}</button>
+                                </form>
                                 @endif
+                                @endforeach
+
+                                <details @if($recuperarItem && old('acao')==='cancelar' ) open @endif>
+                                    <summary class="btn btn-sm btn-outline-danger">Cancelar item</summary>
+
+                                    <form method="POST" action="{{ $rotaItem }}" class="mt-2" data-acao-item data-alvo="{{ $alvo }}" data-confirmacao="Cancelar este item? Ele sairá dos totais e permanecerá no histórico.">
+                                        @csrf
+                                        @method('PATCH')
+                                        <input type="hidden" name="acao" value="cancelar">
+                                        <input type="hidden" name="item_retorno" value="{{ $chave }}">
+
+                                        <label for="motivo-cancelar-{{ $chave }}" class="form-label">Motivo</label>
+                                        <textarea id="motivo-cancelar-{{ $chave }}" name="motivo_cancelamento" class="form-control mb-2" rows="2" maxlength="1000" required>{{ $recuperarItem ? old('motivo_cancelamento') : '' }}</textarea>
+                                        <button type="submit" class="btn btn-sm btn-danger">Confirmar cancelamento</button>
+                                    </form>
+                                </details>
+                                @endif
+
                                 @if($item->situacao === 'EM_EXECUCAO')
-                        <details @if($recuperarItem && old('acao')==='interromper' ) open @endif>
-                            <summary class="btn btn-sm btn-outline-danger">Interromper</summary>
+                                <details @if($recuperarItem && old('acao')==='interromper' ) open @endif>
+                                    <summary class="btn btn-sm btn-outline-danger">Interromper</summary>
 
-                            <form method="POST" action="{{ $rotaItem }}" class="mt-2" data-acao-item data-alvo="{{ $alvo }}" data-confirmacao="Registrar a interrupção com o valor combinado e a devolução informada? Confira os dados antes de confirmar.">
-                                @csrf
-                                @method('PATCH')
-                                <input type="hidden" name="acao" value="interromper">
-                                <input type="hidden" name="item_retorno" value="{{ $chave }}">
+                                    <form method="POST" action="{{ $rotaItem }}" class="mt-2" data-acao-item data-alvo="{{ $alvo }}" data-confirmacao="Registrar a interrupção com o valor combinado e a devolução informada? Confira os dados antes de confirmar.">
+                                        @csrf
+                                        @method('PATCH')
+                                        <input type="hidden" name="acao" value="interromper">
+                                        <input type="hidden" name="item_retorno" value="{{ $chave }}">
 
-                                <div class="mb-2">
-                                    <label for="motivo-interromper-{{ $chave }}" class="form-label">Motivo da interrupção</label>
-                                    <textarea id="motivo-interromper-{{ $chave }}" name="motivo_interrupcao" class="form-control" rows="2" maxlength="1000" required>{{ $recuperarItem ? old('motivo_interrupcao') : '' }}</textarea>
-                                </div>
+                                        <div class="mb-2">
+                                            <label for="motivo-interromper-{{ $chave }}" class="form-label">Motivo da interrupção</label>
+                                            <textarea id="motivo-interromper-{{ $chave }}" name="motivo_interrupcao" class="form-control" rows="2" maxlength="1000" required>{{ $recuperarItem ? old('motivo_interrupcao') : '' }}</textarea>
+                                        </div>
 
-                                <div class="mb-2">
-                                    <label for="valor-{{ $chave }}" class="form-label">Valor total combinado para o item (R$)</label>
-                                    <input id="valor-{{ $chave }}" name="valor_cobrado" type="number" class="form-control" min="0" max="{{ number_format(min($subtotalOriginal, 99999999.99), 2, '.', '') }}" step="0.01" value="{{ $recuperarItem ? old('valor_cobrado') : number_format($subtotalOriginal, 2, '.', '') }}" required>
-                                    <p class="form-text mb-0">Informe o valor total, não unitário. Pode ser zero.</p>
-                                </div>
+                                        <div class="mb-2">
+                                            <label for="valor-{{ $chave }}" class="form-label">Valor total combinado para o item (R$)</label>
+                                            <input id="valor-{{ $chave }}" name="valor_cobrado" type="number" class="form-control" min="0" max="{{ number_format(min($subtotalOriginal, 99999999.99), 2, '.', '') }}" step="0.01" value="{{ $recuperarItem ? old('valor_cobrado') : number_format($subtotalOriginal, 2, '.', '') }}" required>
+                                            <p class="form-text mb-0">Informe o valor total, não unitário. Pode ser zero.</p>
+                                        </div>
 
-                                @if($peca)
-                                <div class="mb-2">
-                                    <label for="devolucao-{{ $chave }}" class="form-label">Quantidade que retorna ao estoque</label>
-                                    <input id="devolucao-{{ $chave }}" name="quantidade_devolvida" type="number" class="form-control" min="0" max="{{ $item->estoque_baixado ? $item->quantidade : 0 }}" step="1" value="{{ $recuperarItem ? old('quantidade_devolvida', 0) : 0 }}">
-                                    <p class="form-text mb-0">Deixe zero se não houver peças reaproveitáveis para devolver.</p>
-                                </div>
+                                        @if($peca)
+                                        <div class="mb-2">
+                                            <label for="devolucao-{{ $chave }}" class="form-label">Quantidade que retorna ao estoque</label>
+                                            <input id="devolucao-{{ $chave }}" name="quantidade_devolvida" type="number" class="form-control" min="0" max="{{ $item->estoque_baixado ? $item->quantidade : 0 }}" step="1" value="{{ $recuperarItem ? old('quantidade_devolvida', 0) : 0 }}">
+                                            <p class="form-text mb-0">Deixe zero se não houver peças reaproveitáveis para devolver.</p>
+                                        </div>
 
-                                <div class="form-check mb-2">
-                                    <input id="confirmar-devolucao-{{ $chave }}" name="confirmar_devolucao" type="checkbox" value="1" class="form-check-input" @checked($recuperarItem && old('confirmar_devolucao'))>
-                                    <label for="confirmar-devolucao-{{ $chave }}" class="form-check-label">Conferi que as unidades devolvidas podem ser reaproveitadas.</label>
-                                </div>
-                                @endif
+                                        <div class="form-check mb-2">
+                                            <input id="confirmar-devolucao-{{ $chave }}" name="confirmar_devolucao" type="checkbox" value="1" class="form-check-input" @checked($recuperarItem && old('confirmar_devolucao'))>
+                                            <label for="confirmar-devolucao-{{ $chave }}" class="form-check-label">Conferi que as unidades devolvidas podem ser reaproveitadas.</label>
+                                        </div>
+                                        @endif
 
-                                <button type="submit" class="btn btn-sm btn-danger">Registrar interrupção</button>
-                            </form>
-                        </details>
+                                        <button type="submit" class="btn btn-sm btn-danger">Registrar interrupção</button>
+                                    </form>
+                                </details>
                                 @endif
                             </div>
                         </details>

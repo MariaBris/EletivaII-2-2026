@@ -28,6 +28,7 @@
                     ['agendamentos.index', 'Agendamentos', 'agendamentos.*'],
                     ['clientes.index', 'Clientes', 'clientes.*'],
                     ['veiculos.index', 'Veículos', 'veiculos.*'],
+                    ['relatorios.index', 'Relatórios', 'relatorios.*'],
                 ] as [$rota, $titulo, $padrao])
                 <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs($padrao) ? 'active' : '' }}" href="{{ route($rota) }}" @if(request()->routeIs($padrao)) aria-current="page" @endif>{{ $titulo }}</a>

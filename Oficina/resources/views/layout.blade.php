@@ -4,14 +4,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>@yield('title', 'Mazotto - Soluções Automotivas')</title>
 
-    <!-- Ícone da aba com v=2 para forçar a atualização do cache -->
     <link rel="icon" href="{{ asset('img/logo_mazotto.jpg') }}?v=2" type="image/jpeg">
-
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
     <style>
         :root {
             --azul-mazotto: #1a2530;
@@ -37,7 +36,6 @@
             color: var(--vermelho-mazotto);
         }
 
-        /* Botão Azul Marinho (Editar / Novo) */
         .btn-primary {
             background-color: var(--azul-mazotto);
             border-color: var(--azul-mazotto);
@@ -48,13 +46,11 @@
             border-color: #0f161d;
         }
 
-        /* Botão Vermelho (Excluir) */
         .btn-danger {
             background-color: var(--vermelho-mazotto);
             border-color: var(--vermelho-mazotto);
         }
 
-        /* Botão Vazado Azul (Consultar / Voltar / Cancelar) */
         .btn-outline-dark,
         .btn-outline-primary {
             color: var(--azul-mazotto);
@@ -80,7 +76,6 @@
             width: 45px;
             height: 45px;
             object-fit: cover;
-            /* Garante que a imagem não distorce, preenchendo o quadrado perfeitamente */
             border-radius: 6px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
@@ -104,20 +99,25 @@
             border-radius: 6px;
         }
     </style>
+
     @stack('estilos')
+
+    <link rel="stylesheet" href="{{ asset('css/cabecalho-impressao.css') }}?v=1">
 </head>
 
 <body class="d-flex flex-column min-vh-100">
-
-    <!-- Chama o cabeçalho -->
     @include('cabecalho')
 
-    <!-- Conteúdo dinâmico das telas -->
     <div class="container py-4 flex-grow-1">
+        @unless($__env->hasSection('cabecalho-impressao-proprio'))
+        <div class="cabecalho-impressao-global">
+            @include('partials.cabecalho-impressao', ['identificacaoImpressao' => str_replace(' - Mazotto', '', trim($__env->yieldContent('title', 'Documento')))])
+        </div>
+        @endunless
+
         @yield('content')
     </div>
 
-    <!-- Chama o rodapé -->
     @include('rodape')
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

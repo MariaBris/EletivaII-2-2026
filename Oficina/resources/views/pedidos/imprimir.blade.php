@@ -2,8 +2,10 @@
 
 @section('title', $modelo ? 'Modelo de checklist - Mazotto' : 'Imprimir OS #' . $pedido->id . ' - Mazotto')
 
+@section('cabecalho-impressao-proprio', '1')
+
 @push('estilos')
-<link rel="stylesheet" href="{{ asset('css/impressao_ordemS.css') }}?v=7">
+<link rel="stylesheet" href="{{ asset('css/impressao_ordemS.css') }}?v=8">
 @endpush
 
 @section('content')
@@ -20,16 +22,7 @@
 
 @if($modelo)
 <div class="ficha-checklist">
-    <div class="ficha-cabecalho">
-        <img src="{{ asset('img/logo_mazotto.jpg') }}" alt="Logo Mazotto" class="ficha-logo">
-
-        <div class="text-center">
-            <h2 class="h5 mb-1">Mazotto Soluções Automotivas</h2>
-            <p class="mb-0">Ficha de entrada e inspeção do veículo</p>
-        </div>
-
-        <strong>OS: __________</strong>
-    </div>
+    @include('partials.cabecalho-impressao', ['subtituloImpressao' => 'Ficha de entrada e inspeção do veículo', 'identificacaoImpressao' => 'OS: __________'])
 
     <table class="ficha-tabela">
         <tbody>
@@ -120,6 +113,10 @@
     @endphp
 
     <div @class(['ficha-pagina-mecanica'=> $grupo === 'MECANICA'])>
+        @if($grupo === 'MECANICA')
+        @include('partials.cabecalho-impressao', ['subtituloImpressao' => 'Inspeção mecânica — continuação', 'identificacaoImpressao' => 'OS: __________'])
+        @endif
+
         <table class="ficha-tabela">
             <thead>
                 <tr>
@@ -204,16 +201,7 @@ $checklistImpresso = $pedido->checklistItens
 <div class="documento-os">
     @if($modo === 'completo')
     <section class="ficha-detalhes">
-        <div class="ficha-cabecalho">
-            <img src="{{ asset('img/logo_mazotto.jpg') }}" alt="Logo Mazotto" class="ficha-logo">
-
-            <div class="ficha-titulo">
-                <h1>Mazotto Soluções Automotivas</h1>
-                <p>Orçamento e ordem de serviço</p>
-            </div>
-
-            <strong>OS: #{{ $pedido->id }}</strong>
-        </div>
+        @include('partials.cabecalho-impressao', ['subtituloImpressao' => 'Orçamento e ordem de serviço', 'identificacaoImpressao' => 'OS: #' . $pedido->id])
 
         <table>
             <tbody>
@@ -332,6 +320,7 @@ $checklistImpresso = $pedido->checklistItens
                     <td>{{ $item->nome }}</td>
                     <td class="ficha-opcao">{{ in_array($item->situacao, ['OK', 'PRESENTE'], true) ? 'X' : '' }}</td>
                     <td class="ficha-opcao">{{ in_array($item->situacao, ['ATENCAO', 'AUSENTE'], true) ? 'X' : '' }}</td>
+
                     <td>
                         <span class="ficha-texto">{{ $item->observacoes }}</span>
 
@@ -359,16 +348,7 @@ $checklistImpresso = $pedido->checklistItens
     @endif
 
     <section @class(['ficha-resumo', 'ficha-resumo-separado'=> $modo === 'completo'])>
-        <div class="ficha-cabecalho">
-            <img src="{{ asset('img/logo_mazotto.jpg') }}" alt="Logo Mazotto" class="ficha-logo">
-
-            <div class="ficha-titulo">
-                <h1>Mazotto Soluções Automotivas</h1>
-                <p>Resumo do orçamento / OS</p>
-            </div>
-
-            <strong>OS: #{{ $pedido->id }}</strong>
-        </div>
+        @include('partials.cabecalho-impressao', ['subtituloImpressao' => 'Resumo do orçamento / OS', 'identificacaoImpressao' => 'OS: #' . $pedido->id])
 
         <table>
             <tbody>

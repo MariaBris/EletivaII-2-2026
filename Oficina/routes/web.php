@@ -1,16 +1,18 @@
 <?php
 
+use App\Http\Controllers\AgendamentoController;
 use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\ClienteController;
-use App\Http\Controllers\ProdutoController;
-use App\Http\Controllers\VeiculosController;
-use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\ServicoController;
+use App\Http\Controllers\OficinaController;
 use App\Http\Controllers\PedidoController;
-use App\Http\Controllers\AgendamentoController;
+use App\Http\Controllers\ProdutoController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\RelatorioController;
+use App\Http\Controllers\ServicoController;
+use App\Http\Controllers\VeiculosController;
 use App\Http\Middleware\VerificarAdministrador;
-use App\Models\Produto;
 use App\Models\Agendamento;
+use App\Models\Produto;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -86,12 +88,35 @@ Route::middleware('auth')->group(function () {
         ->name('profile.destroy');
 
     Route::middleware(VerificarAdministrador::class)->group(function () {
+        Route::get('/oficina/dados', [OficinaController::class, 'edit'])
+            ->name('oficina.edit');
+
+        Route::put('/oficina/dados', [OficinaController::class, 'update'])
+            ->name('oficina.update');
+
         Route::resource('categorias', CategoriaController::class);
-        Route::resource('produtos', ProdutoController::class);
+
+        Route::resource('produtos', ProdutoController::class)
+            ->except(['index']);
+
         Route::resource('servicos', ServicoController::class);
 
         Route::get('/checklist/modelo', [PedidoController::class, 'modelo'])
             ->name('checklist.modelo');
+    });
+
+    Route::get('/produtos', [ProdutoController::class, 'index'])
+        ->name('produtos.index');
+
+    Route::prefix('relatorios')->name('relatorios.')->group(function () {
+        Route::get('/', [RelatorioController::class, 'index'])
+            ->name('index');
+
+        Route::get('/faturamento', [RelatorioController::class, 'faturamento'])
+            ->name('faturamento');
+
+        Route::get('/servicos', [RelatorioController::class, 'servicos'])
+            ->name('servicos');
     });
 
     Route::resource('agendamentos', AgendamentoController::class);

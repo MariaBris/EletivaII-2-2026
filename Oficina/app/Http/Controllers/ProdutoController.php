@@ -2,11 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Produto;
 use App\Models\Categoria;
+use App\Models\Produto;
 use App\Services\ReservaEstoque;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
@@ -18,10 +19,18 @@ class ProdutoController extends Controller
      */
     public function index(Request $request)
     {
+        abort_unless(
+            $request->user()
+                && in_array($request->user()->role, ['ADM', 'FUNC'], true),
+            403
+        );
+
         $validacao = Validator::make($request->query(), [
             'busca' => ['nullable', 'string', 'max:255'],
+            'estoque_baixo' => ['nullable', 'boolean'],
             'page' => ['nullable', 'integer', 'min:1'],
         ], [
+            'estoque_baixo.boolean' => 'Selecione um filtro de estoque válido.',
             'busca.string' => 'Informe um texto para pesquisar.',
             'busca.max' => 'A pesquisa deve ter até 255 caracteres.',
             'page.integer' => 'A página deve ser um número inteiro.',
@@ -37,7 +46,7 @@ class ProdutoController extends Controller
         $dados = $validacao->validated();
         $busca = trim($dados['busca'] ?? '');
 
-        $consulta = Produto::with('categoria')->comReservas(); // Prepara a consulta dos produtos com suas categorias
+        $consulta = Produto::query();
 
         if ($busca !== '') {
             $consulta->where(function ($consultaBusca) use ($busca) {
@@ -49,12 +58,20 @@ class ProdutoController extends Controller
             });
         }
 
-        $produtos = $consulta->orderBy('nome')
+        if (!empty($dados['estoque_baixo'])) {
+            $consulta->whereColumn('estoque', '<=', 'estoque_minimo');
+        }
+
+        $valorEstoque = (clone $consulta)->sum(DB::raw('estoque * preco'));
+
+        $produtos = $consulta->with('categoria')
+            ->comReservas()
+            ->orderBy('nome')
             ->orderBy('id')
             ->paginate(15)
             ->withQueryString();
 
-        return view('produtos.index', compact('produtos')); // Retorna a view de listagem enviando a variável com os produtos
+        return view('produtos.index', compact('produtos', 'valorEstoque'));
     }
 
     /**
@@ -62,9 +79,9 @@ class ProdutoController extends Controller
      */
     public function create()
     {
-        $categorias = Categoria::all(); // Busca todas as categorias para preencher o select do formulário
+        $categorias = Categoria::all();
 
-        return view('produtos.create', compact('categorias')); // Abre a tela de cadastro enviando as categorias
+        return view('produtos.create', compact('categorias'));
     }
 
     /**
@@ -72,11 +89,12 @@ class ProdutoController extends Controller
      */
     public function store(Request $request)
     {
-        $dados = $this->validar($request); // Recolhe somente os dados validados do formulário
-
+        $dados = $this->validar($request);
         $dados = $this->prepararImagem($request, $dados);
 
-        $produto = ReservaEstoque::transacao(fn () => Produto::create($dados)); // Grava o novo produto no banco de dados
+        $produto = ReservaEstoque::transacao(
+            fn() => Produto::create($dados)
+        );
 
         return redirect()->route('produtos.index')
             ->with('mensagem', "O produto '{$produto->nome}' foi inserido com sucesso!");
@@ -87,9 +105,11 @@ class ProdutoController extends Controller
      */
     public function show(string $id)
     {
-        $produto = Produto::with('categoria')->comReservas()->findOrFail($id); // Procura o produto pelo ID ou mostra erro 404 se não encontrar
+        $produto = Produto::with('categoria')
+            ->comReservas()
+            ->findOrFail($id);
 
-        return view('produtos.show', compact('produto')); // Retorna a tela de consulta/exclusão
+        return view('produtos.show', compact('produto'));
     }
 
     /**
@@ -97,10 +117,10 @@ class ProdutoController extends Controller
      */
     public function edit(string $id)
     {
-        $produto = Produto::comReservas()->findOrFail($id); // Encontra o produto que vai ser editado
-        $categorias = Categoria::all(); // Busca as categorias para o select continuar funcional na edição
+        $produto = Produto::comReservas()->findOrFail($id);
+        $categorias = Categoria::all();
 
-        return view('produtos.edit', compact('produto', 'categorias')); // Abre o formulário de edição com os dados atuais
+        return view('produtos.edit', compact('produto', 'categorias'));
     }
 
     /**
@@ -108,10 +128,11 @@ class ProdutoController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        $produto = Produto::findOrFail($id); // Localiza o registo que será alterado
-        $dados = $this->validar($request, false); // Pega os novos dados validados do formulário
+        $produto = Produto::findOrFail($id);
+        $dados = $this->validar($request, false);
 
         $quantidadeRecebida = (int) ($dados['quantidade_recebida'] ?? 0);
+
         unset($dados['quantidade_recebida']);
 
         $dados = $this->prepararImagem($request, $dados);
@@ -143,6 +164,7 @@ class ProdutoController extends Controller
 
         if ($alterado) {
             $produto = $alterado;
+
             return redirect()->route('produtos.index')
                 ->with('mensagem', $quantidadeRecebida > 0
                     ? "Produto atualizado! Entrada de {$quantidadeRecebida} unidade(s) registrada. Estoque físico: {$produto->estoque}."
@@ -160,15 +182,15 @@ class ProdutoController extends Controller
      */
     public function destroy(string $id)
     {
-        $produto = Produto::findOrFail($id); // Encontra o produto antes de apagar
-        $nomeProduto = $produto->nome; // Guarda o nome para exibir na mensagem de sucesso após a exclusão
+        $produto = Produto::findOrFail($id);
+        $nomeProduto = $produto->nome;
 
         try {
             $excluido = ReservaEstoque::transacao(function () use ($id) {
                 return Produto::lockForUpdate()->findOrFail($id)->delete();
             });
 
-            if (!$excluido) { // Executa a exclusão do registo
+            if (!$excluido) {
                 return redirect()->route('produtos.index')
                     ->with('erro', 'Não foi possível excluir o produto.');
             }
@@ -285,18 +307,16 @@ class ProdutoController extends Controller
     {
         unset($dados['imagem_arquivo'], $dados['imagem_url']);
 
-        // Verifica se o utilizador enviou um ficheiro de imagem do dispositivo (computador/telemóvel)
         if ($request->hasFile('imagem_arquivo')) {
             $imagem = $request->file('imagem_arquivo');
-            $nomeImagem = $imagem->hashName(); // Gera um nome para evitar conflitos entre os ficheiros
+            $nomeImagem = $imagem->hashName();
 
             File::ensureDirectoryExists(public_path('img/produtos'));
 
-            $imagem->move(public_path('img/produtos'), $nomeImagem); // Move o ficheiro para a pasta public/img/produtos
-            $dados['imagem'] = 'img/produtos/' . $nomeImagem; // Grava o caminho relativo que será salvo no banco
-        }
-        // Se o utilizador preferiu colar um link direto da internet
-        elseif ($request->filled('imagem_url')) {
+            $imagem->move(public_path('img/produtos'), $nomeImagem);
+
+            $dados['imagem'] = 'img/produtos/' . $nomeImagem;
+        } elseif ($request->filled('imagem_url')) {
             $dados['imagem'] = $request->input('imagem_url');
         }
 
